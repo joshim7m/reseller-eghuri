@@ -2,7 +2,7 @@
 import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import ConfirmDialog from '@/Components/ConfirmDialog.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 
 defineProps({
     products: { type: Object, required: true },
@@ -13,6 +13,33 @@ const search = ref('')
 const categoryId = ref('')
 const showDeleteDialog = ref(false)
 const deletingId = ref(null)
+const showCategoryDropdown = ref(false)
+const categoryDropdownRef = ref(null)
+
+const selectedCategoryName = computed(() => {
+    if (!categoryId.value) return 'All Categories'
+    for (const cat of categories) {
+        if (cat.id === categoryId.value) return cat.name
+        for (const child of (cat.children || [])) {
+            if (child.id === categoryId.value) return child.name
+        }
+    }
+    return 'All Categories'
+})
+
+function selectCategory(id) {
+    categoryId.value = id
+    showCategoryDropdown.value = false
+}
+
+function handleClickOutside(e) {
+    if (categoryDropdownRef.value && !categoryDropdownRef.value.contains(e.target)) {
+        showCategoryDropdown.value = false
+    }
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutside))
+onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 
 function truncate(text, len = 50) {
     return text?.length > len ? text.substring(0, len) + '...' : text
@@ -69,10 +96,19 @@ function statusBadge(status) {
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex flex-wrap gap-3">
                     <input v-model="search" type="text" placeholder="Search products..." class="flex-1 min-w-[200px] rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-                    <select v-model="categoryId" class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <option value="">All Categories</option>
-                        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-                    </select>
+                    <div ref="categoryDropdownRef" class="relative">
+                        <button @click.stop="showCategoryDropdown = !showCategoryDropdown" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm px-3 py-2 min-w-[180px] justify-between hover:border-gray-400 dark:hover:border-gray-600 transition">
+                            <span class="truncate">{{ selectedCategoryName }}</span>
+                            <svg class="w-4 h-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div v-show="showCategoryDropdown" class="absolute z-50 mt-1 w-full min-w-[220px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg max-h-60 overflow-y-auto admin-scrollbar">
+                            <button @click="selectCategory('')" class="w-full text-left px-3 py-2 text-sm transition" :class="!categoryId ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'">All Categories</button>
+                            <template v-for="cat in categories" :key="cat.id">
+                                <button @click="selectCategory(cat.id)" class="w-full text-left px-3 py-2 text-sm transition" :class="categoryId === cat.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'">{{ cat.name }}</button>
+                                <button v-for="child in cat.children" :key="child.id" @click="selectCategory(child.id)" class="w-full text-left px-3 py-2 text-sm pl-6 transition" :class="categoryId === child.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'">{{ child.name }}</button>
+                            </template>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="overflow-x-auto admin-scrollbar">

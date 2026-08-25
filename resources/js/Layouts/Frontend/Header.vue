@@ -70,28 +70,29 @@ const navLinks = [
 <template>
     <header class="sticky top-0 z-40 w-full bg-white dark:bg-[#171212] border-b border-surface-container-high dark:border-[#3a302e]">
         <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:h-16 md:gap-4 md:px-6 md:py-0">
-            <!-- Mobile menu button -->
-            <button
-                @click="$emit('open-mobile')"
-                class="-ml-1.5 p-1.5 text-charcoal transition hover:text-primary dark:text-[#f9eeed] dark:hover:text-[#f6b7b2] md:hidden"
-                aria-label="Open menu"
-            >
-                <span class="material-symbols-outlined text-[24px]" aria-hidden="true">menu</span>
-            </button>
+            <!-- Left: Mobile menu button + Logo -->
+            <div class="flex shrink-0 items-center gap-2">
+                <button
+                    @click="$emit('open-mobile')"
+                    class="-ml-1.5 p-1.5 text-charcoal transition hover:text-primary dark:text-[#f9eeed] dark:hover:text-[#f6b7b2] md:hidden"
+                    aria-label="Open menu"
+                >
+                    <span class="material-symbols-outlined text-[24px]" aria-hidden="true">menu</span>
+                </button>
 
-            <!-- Logo -->
-            <Link :href="route('home')" class="flex shrink-0 items-center gap-2">
-                <img
-                    v-if="settings.company_logo"
-                    :src="`/${settings.company_logo}`"
-                    :alt="settings.company_name || 'Store'"
-                    class="h-8 w-auto md:h-9"
-                />
-                <template v-else>
-                    <span class="material-symbols-outlined text-2xl font-bold text-primary" aria-hidden="true">auto_awesome</span>
-                    <span class="text-xl font-bold tracking-tight text-charcoal dark:text-[#f9eeed] md:text-2xl">{{ settings.company_name || 'Store' }}</span>
-                </template>
-            </Link>
+                <Link :href="route('home')" class="flex shrink-0 items-center gap-2">
+                    <img
+                        v-if="settings.company_logo"
+                        :src="`/${settings.company_logo}`"
+                        :alt="settings.company_name || 'Store'"
+                        class="h-8 w-auto md:h-9"
+                    />
+                    <template v-else>
+                        <span class="material-symbols-outlined text-2xl font-bold text-primary" aria-hidden="true">auto_awesome</span>
+                        <span class="text-xl font-bold tracking-tight text-charcoal dark:text-[#f9eeed] md:text-2xl">{{ settings.company_name || 'Store' }}</span>
+                    </template>
+                </Link>
+            </div>
 
             <!-- Desktop nav -->
             <nav class="hidden items-center gap-8 md:flex">
@@ -221,9 +222,8 @@ const navLinks = [
                 ref="catMegaEl"
                 @mouseenter="openCatMega"
                 @mouseleave="scheduleCloseCatMega"
-                class="border-t border-surface-container-high bg-white dark:bg-[#241d1c] dark:border-[#3a302e]"
+                class="mx-auto max-w-7xl border-t border-surface-container-high bg-white px-4 py-6 dark:bg-[#241d1c] dark:border-[#3a302e] md:px-6"
             >
-                <div class="mx-auto max-w-7xl px-4 py-6 md:px-6">
                     <div class="grid grid-cols-4 gap-4 sm:grid-cols-6 lg:grid-cols-8">
                         <Link
                             v-for="cat in categories"
@@ -255,7 +255,6 @@ const navLinks = [
                         View All Categories
                         <span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
                     </Link>
-                </div>
             </div>
         </Transition>
 

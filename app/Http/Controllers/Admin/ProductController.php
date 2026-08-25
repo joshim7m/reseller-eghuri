@@ -22,7 +22,12 @@ class ProductController extends Controller
         }
 
         if ($request->filled('category_id')) {
-            $query->whereHas('categories', fn ($q) => $q->where('categories.id', $request->category_id));
+            $cat = Category::find($request->category_id);
+            $catIds = $cat ? $cat->children->pluck('id')->push($cat->id)->values() : [$request->category_id];
+            $query->where(function ($q) use ($catIds) {
+                $q->whereIn('category_id', $catIds)
+                    ->orWhereHas('categories', fn ($sub) => $sub->whereIn('categories.id', $catIds));
+            });
         }
 
         $sortField = match ($request->sort_by) {
@@ -38,7 +43,7 @@ class ProductController extends Controller
         }
 
         $products = $query->paginate(15)->withQueryString();
-        $categories = Category::whereNull('parent_id')->orderBy('name')->get();
+        $categories = Category::with('children')->orderBy('name')->get();
 
         return Inertia::render('Admin/Products/Index', compact('products', 'categories'));
     }

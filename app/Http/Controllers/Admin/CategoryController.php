@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -13,7 +15,7 @@ class CategoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Category::with('children', 'parent')->withCount('products');
+        $query = Category::with('children', 'parent');
 
         if ($search = $request->get('search')) {
             $query->where('name', 'like', "%{$search}%");
@@ -44,6 +46,12 @@ class CategoryController extends Controller
         }
 
         $categories = $query->paginate(15)->withQueryString();
+        $categories->getCollection()->transform(function (Category $category) {
+            $category->products_count = $this->countProducts($category);
+
+            return $category;
+        });
+
         $parentCategories = Category::whereNull('parent_id')->orderBy('name')->get();
 
         return Inertia::render('Admin/Categories/Index', compact('categories', 'parentCategories'));
@@ -137,5 +145,22 @@ class CategoryController extends Controller
 
         return redirect()->route('admin.categories.index')
             ->with('success', 'Category deleted successfully.');
+    }
+
+    private function countProducts(Category $category): int
+    {
+        $ids = $category->children->pluck('id')->push($category->id)->values();
+
+        $pivotCount = DB::table('category_product')
+            ->join('products', 'products.id', '=', 'category_product.product_id')
+            ->whereIn('category_product.category_id', $ids)
+            ->where('products.status', 'active')
+            ->count();
+
+        $fkCount = Product::where('status', 'active')
+            ->whereIn('category_id', $ids)
+            ->count();
+
+        return $pivotCount + $fkCount;
     }
 }

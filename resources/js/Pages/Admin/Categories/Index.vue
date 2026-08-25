@@ -10,14 +10,15 @@ defineProps({
 })
 
 const search = ref('')
+const parentId = ref('')
 const showDeleteDialog = ref(false)
 const deletingId = ref(null)
 
 let debounceTimer
-watch(search, () => {
+watch([search, parentId], () => {
     clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
-        router.get(route('admin.categories.index'), { search: search.value }, { preserveState: true, replace: true })
+        router.get(route('admin.categories.index'), { search: search.value, parent_id: parentId.value }, { preserveState: true, replace: true })
     }, 300)
 })
 
@@ -53,8 +54,13 @@ function confirmDelete() {
             </div>
 
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <div class="p-4 border-b border-gray-200 dark:border-gray-800">
-                    <input v-model="search" type="text" placeholder="Search categories..." class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex flex-wrap gap-3">
+                    <input v-model="search" type="text" placeholder="Search categories..." class="flex-1 min-w-[200px] rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                    <select v-model="parentId" class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">All Categories</option>
+                        <option value="0">Top Categories</option>
+                        <option v-for="cat in parentCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                    </select>
                 </div>
 
                 <div class="overflow-x-auto admin-scrollbar">

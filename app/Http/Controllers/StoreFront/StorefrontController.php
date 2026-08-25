@@ -26,10 +26,12 @@ class StorefrontController extends Controller
         $categories = Category::with('children')->orderBy('id')->get();
 
         $categoryIds = $categories->pluck('id');
+        $allChildIds = $categories->flatMap->children->pluck('id');
+        $allIds = $categoryIds->merge($allChildIds)->unique();
 
-        $counts = DB::table('category_product')
+        $pivotCounts = DB::table('category_product')
             ->join('products', 'products.id', '=', 'category_product.product_id')
-            ->whereIn('category_product.category_id', $categoryIds)
+            ->whereIn('category_product.category_id', $allIds)
             ->where('products.status', 'active')
             ->select('category_product.category_id')
             ->selectRaw('count(*) as total')
@@ -37,11 +39,19 @@ class StorefrontController extends Controller
             ->pluck('total', 'category_product.category_id')
             ->map(fn ($value) => (int) $value);
 
-        $categories->each(function (Category $category) use ($counts) {
-            $total = (int) $counts->get($category->id, 0);
+        $fkCounts = Product::where('status', 'active')
+            ->whereIn('category_id', $allIds)
+            ->select('category_id')
+            ->selectRaw('count(*) as total')
+            ->groupBy('category_id')
+            ->pluck('total', 'category_id')
+            ->map(fn ($value) => (int) $value);
+
+        $categories->each(function (Category $category) use ($pivotCounts, $fkCounts) {
+            $total = (int) $pivotCounts->get($category->id, 0) + (int) $fkCounts->get($category->id, 0);
 
             if ($category->children->isNotEmpty()) {
-                $total += $category->children->sum(fn (Category $child) => (int) $counts->get($child->id, 0));
+                $total += $category->children->sum(fn (Category $child) => (int) $pivotCounts->get($child->id, 0) + (int) $fkCounts->get($child->id, 0));
             }
 
             $category->products_count = $total;
@@ -76,9 +86,42 @@ class StorefrontController extends Controller
 
     public function categories()
     {
-        $categories = Category::withCount(['products' => function ($q) {
-            $q->where('status', 'active');
-        }])->get();
+        $categories = Category::where('is_active', true)
+            ->with('children')
+            ->orderBy('name')
+            ->get();
+
+        $allIds = $categories->pluck('id')
+            ->merge($categories->flatMap->children->pluck('id'))
+            ->unique();
+
+        $pivotCounts = DB::table('category_product')
+            ->join('products', 'products.id', '=', 'category_product.product_id')
+            ->whereIn('category_product.category_id', $allIds)
+            ->where('products.status', 'active')
+            ->select('category_product.category_id')
+            ->selectRaw('count(*) as total')
+            ->groupBy('category_product.category_id')
+            ->pluck('total', 'category_product.category_id')
+            ->map(fn ($value) => (int) $value);
+
+        $fkCounts = Product::where('status', 'active')
+            ->whereIn('category_id', $allIds)
+            ->select('category_id')
+            ->selectRaw('count(*) as total')
+            ->groupBy('category_id')
+            ->pluck('total', 'category_id')
+            ->map(fn ($value) => (int) $value);
+
+        $categories->each(function (Category $category) use ($pivotCounts, $fkCounts) {
+            $total = (int) $pivotCounts->get($category->id, 0) + (int) $fkCounts->get($category->id, 0);
+
+            if ($category->children->isNotEmpty()) {
+                $total += $category->children->sum(fn (Category $child) => (int) $pivotCounts->get($child->id, 0) + (int) $fkCounts->get($child->id, 0));
+            }
+
+            $category->products_count = $total;
+        });
 
         return Inertia::render('StoreFront/Categories/Index', compact('categories'));
     }
@@ -89,8 +132,10 @@ class StorefrontController extends Controller
 
         $categoryIds = $category->children->pluck('id')->push($category->id)->values();
 
-        $query = Product::whereIn('category_id', $categoryIds)
-            ->where('status', 'active')
+        $query = Product::where(function ($q) use ($categoryIds) {
+            $q->whereIn('category_id', $categoryIds)
+                ->orWhereHas('categories', fn ($sub) => $sub->whereIn('categories.id', $categoryIds));
+        })->where('status', 'active')
             ->with('images', 'variants');
 
         $query = $this->applyFilters($request, $query);
@@ -158,10 +203,12 @@ class StorefrontController extends Controller
 
     public function product(Product $product)
     {
-        $product->load('category', 'images', 'variants.image');
+        $product->load('categories', 'images', 'variants.image');
 
-        $related = Product::where('category_id', $product->category_id)
-            ->where('id', '!=', $product->id)
+        $related = Product::where(function ($q) use ($product) {
+            $q->where('category_id', $product->category_id)
+                ->orWhereHas('categories', fn ($sub) => $sub->where('categories.id', $product->category_id));
+        })->where('id', '!=', $product->id)
             ->where('status', 'active')
             ->with('images', 'variants')
             ->take(6)
@@ -405,7 +452,10 @@ class StorefrontController extends Controller
 
         if ($request->filled('categories')) {
             $cats = (array) $request->categories;
-            $query->whereIn('category_id', $cats);
+            $query->where(function ($q) use ($cats) {
+                $q->whereIn('category_id', $cats)
+                    ->orWhereHas('categories', fn ($sub) => $sub->whereIn('categories.id', $cats));
+            });
         }
 
         if ($request->filled('sizes')) {
@@ -440,11 +490,41 @@ class StorefrontController extends Controller
     private function getFilterOptions(Request $request)
     {
         $categories = Category::whereNull('parent_id')
-            ->withCount(['products' => function ($q) {
-                $q->where('status', 'active');
-            }])
+            ->with('children')
             ->orderBy('name')
             ->get();
+
+        $allIds = $categories->pluck('id')
+            ->merge($categories->flatMap->children->pluck('id'))
+            ->unique();
+
+        $pivotCounts = DB::table('category_product')
+            ->join('products', 'products.id', '=', 'category_product.product_id')
+            ->whereIn('category_product.category_id', $allIds)
+            ->where('products.status', 'active')
+            ->select('category_product.category_id')
+            ->selectRaw('count(*) as total')
+            ->groupBy('category_product.category_id')
+            ->pluck('total', 'category_product.category_id')
+            ->map(fn ($value) => (int) $value);
+
+        $fkCounts = Product::where('status', 'active')
+            ->whereIn('category_id', $allIds)
+            ->select('category_id')
+            ->selectRaw('count(*) as total')
+            ->groupBy('category_id')
+            ->pluck('total', 'category_id')
+            ->map(fn ($value) => (int) $value);
+
+        $categories->each(function (Category $category) use ($pivotCounts, $fkCounts) {
+            $total = (int) $pivotCounts->get($category->id, 0) + (int) $fkCounts->get($category->id, 0);
+
+            if ($category->children->isNotEmpty()) {
+                $total += $category->children->sum(fn (Category $child) => (int) $pivotCounts->get($child->id, 0) + (int) $fkCounts->get($child->id, 0));
+            }
+
+            $category->products_count = $total;
+        });
 
         $prices = Product::where('status', 'active')
             ->selectRaw('MIN(sale_price) as min_price, MAX(sale_price) as max_price')

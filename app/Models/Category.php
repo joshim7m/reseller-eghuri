@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -44,10 +45,10 @@ class Category extends Model
         return $this->hasMany(Category::class, 'parent_id');
     }
 
-    /** @return HasMany<Product, $this> */
-    public function products(): HasMany
+    /** @return BelongsToMany<Product, $this> */
+    public function products(): BelongsToMany
     {
-        return $this->hasMany(Product::class);
+        return $this->belongsToMany(Product::class);
     }
 
     public function getImageUrlAttribute(): ?string
