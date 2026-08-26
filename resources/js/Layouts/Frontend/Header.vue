@@ -148,7 +148,7 @@ const navLinks = [
                     class="relative hidden items-center gap-1 p-1.5 text-sm font-medium text-charcoal transition-colors duration-200 hover:text-primary dark:text-[#f9eeed] dark:hover:text-[#f6b7b2] sm:flex"
                 >
                     <span class="material-symbols-outlined text-[20px]" aria-hidden="true">favorite</span>
-                    <span class="hidden lg:inline">Favorites</span>
+              
                     <span v-if="wishlistCount" class="absolute right-0 top-0 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-sale-price px-1 text-[10px] font-bold leading-none text-white">{{ wishlistCount }}</span>
                 </Link>
 
