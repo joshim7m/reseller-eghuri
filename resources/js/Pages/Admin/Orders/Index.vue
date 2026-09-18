@@ -1,7 +1,7 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 defineProps({
     orders: { type: Object, required: true },
@@ -15,11 +15,13 @@ function onSearch() {
     clearTimeout(timeout)
     timeout = setTimeout(() => {
         const params = new URLSearchParams(window.location.search)
+
         if (search.value) {
             params.set('search', search.value)
         } else {
             params.delete('search')
         }
+
         router.get(route('admin.orders.index') + '?' + params.toString(), {}, { preserveScroll: true, preserveState: true })
     }, 400)
 }
@@ -30,11 +32,13 @@ function formatPrice(price) {
 
 function statusBadge(status) {
     const map = { pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', processing: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }
+
     return map[status] || 'bg-gray-100 text-gray-800'
 }
 
 function paymentBadge(status) {
     const map = { paid: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', unpaid: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', partial: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' }
+
     return map[status] || 'bg-gray-100 text-gray-800'
 }
 </script>

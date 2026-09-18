@@ -57,6 +57,34 @@
         background: #64748b;
     }
 
+    .notification-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: #c4b3b1 transparent;
+    }
+    .notification-scrollbar::-webkit-scrollbar {
+        height: 6px;
+        width: 6px;
+    }
+    .notification-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .notification-scrollbar::-webkit-scrollbar-thumb {
+        background: #c4b3b1;
+        border-radius: 3px;
+    }
+    .notification-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #82514e;
+    }
+    .dark .notification-scrollbar {
+        scrollbar-color: #4a3a38 transparent;
+    }
+    .dark .notification-scrollbar::-webkit-scrollbar-thumb {
+        background: #4a3a38;
+    }
+    .dark .notification-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #f6b7b2;
+    }
+
     .rich-text-content {
         @apply text-sm sm:text-base leading-relaxed text-gray-900 dark:text-gray-100;
     }

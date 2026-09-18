@@ -18,16 +18,32 @@ class ProductController extends Controller
         $query = Product::with('category', 'images', 'variants', 'categories');
 
         if ($search = $request->get('search')) {
-            $query->where('title', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhereHas('variants', fn ($variant) => $variant->where('sku', 'like', "%{$search}%"));
+            });
         }
 
         if ($request->filled('category_id')) {
-            $cat = Category::find($request->category_id);
-            $catIds = $cat ? $cat->children->pluck('id')->push($cat->id)->values() : [$request->category_id];
-            $query->where(function ($q) use ($catIds) {
-                $q->whereIn('category_id', $catIds)
-                    ->orWhereHas('categories', fn ($sub) => $sub->whereIn('categories.id', $catIds));
-            });
+            if ($request->category_id === 'none') {
+                $query->whereNull('category_id')->whereDoesntHave('categories');
+            } else {
+                $catIds = $this->categoryIdsIncludingDescendants($request->category_id);
+
+                $query->where(function ($q) use ($catIds) {
+                    $q->whereIn('category_id', $catIds)
+                        ->orWhereHas('categories', fn ($sub) => $sub->whereIn('categories.id', $catIds));
+                });
+            }
+        }
+
+        if (in_array($request->get('status'), ['active', 'inactive', 'draft'], true)) {
+            $query->where('status', $request->get('status'));
+        }
+
+        if (in_array($request->get('featured'), ['true', 'false'], true)) {
+            $query->where('featured', $request->get('featured') === 'true');
         }
 
         $sortField = match ($request->sort_by) {
@@ -71,12 +87,15 @@ class ProductController extends Controller
             'sale_price' => 'required|integer|min:0|gte:unit_price',
             'status' => 'required|in:active,inactive,draft',
             'featured' => 'boolean',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:500',
+            'youtube_url' => 'nullable|string|max:255',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'variants' => 'nullable|array',
-            'variants.*.option1' => 'nullable|string|max:50',
-            'variants.*.option2' => 'nullable|string|max:50',
-            'variants.*.option3' => 'nullable|string|max:50',
+            'variants.*.options' => 'nullable|array',
+            'variants.*.options.*.name' => 'required|string|max:50',
+            'variants.*.options.*.value' => 'required|string|max:50',
             'variants.*.sku' => 'nullable|string|max:255',
             'variants.*.unit_price' => 'nullable|integer|min:0',
             'variants.*.sale_price' => 'nullable|integer|min:0',
@@ -98,6 +117,9 @@ class ProductController extends Controller
             'sale_price' => $validated['sale_price'],
             'status' => $validated['status'],
             'featured' => $validated['featured'] ?? false,
+            'meta_title' => $validated['meta_title'] ?? null,
+            'meta_description' => $validated['meta_description'] ?? null,
+            'youtube_url' => $validated['youtube_url'] ?? null,
         ]);
 
         if (! empty($validated['category_ids'])) {
@@ -108,8 +130,7 @@ class ProductController extends Controller
             foreach ($validated['variants'] as $variant) {
                 ProductVariant::create([
                     'product_id' => $product->id,
-                    'size' => $variant['option1'] ?? null,
-                    'color' => $variant['option2'] ?? null,
+                    'options' => $this->normalizeOptions($variant),
                     'sku' => $variant['sku'] ?? null,
                     'unit_price' => $variant['unit_price'] ?? null,
                     'sale_price' => $variant['sale_price'] ?? null,
@@ -158,13 +179,16 @@ class ProductController extends Controller
             'sale_price' => 'required|integer|min:0|gte:unit_price',
             'status' => 'required|in:active,inactive,draft',
             'featured' => 'boolean',
+            'meta_title' => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:500',
+            'youtube_url' => 'nullable|string|max:255',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'variants' => 'nullable|array',
             'variants.*.id' => 'nullable|integer',
-            'variants.*.option1' => 'nullable|string|max:50',
-            'variants.*.option2' => 'nullable|string|max:50',
-            'variants.*.option3' => 'nullable|string|max:50',
+            'variants.*.options' => 'nullable|array',
+            'variants.*.options.*.name' => 'required|string|max:50',
+            'variants.*.options.*.value' => 'required|string|max:50',
             'variants.*.sku' => 'nullable|string|max:255',
             'variants.*.unit_price' => 'nullable|integer|min:0',
             'variants.*.sale_price' => 'nullable|integer|min:0',
@@ -186,6 +210,9 @@ class ProductController extends Controller
             'sale_price' => $validated['sale_price'],
             'status' => $validated['status'],
             'featured' => $validated['featured'] ?? false,
+            'meta_title' => $validated['meta_title'] ?? null,
+            'meta_description' => $validated['meta_description'] ?? null,
+            'youtube_url' => $validated['youtube_url'] ?? null,
         ]);
 
         if (! empty($validated['category_ids'])) {
@@ -196,8 +223,7 @@ class ProductController extends Controller
         if (! empty($validated['variants'])) {
             foreach ($validated['variants'] as $variant) {
                 $data = [
-                    'size' => $variant['option1'] ?? null,
-                    'color' => $variant['option2'] ?? null,
+                    'options' => $this->normalizeOptions($variant),
                     'sku' => $variant['sku'] ?? null,
                     'unit_price' => $variant['unit_price'] ?? null,
                     'sale_price' => $variant['sale_price'] ?? null,
@@ -237,8 +263,31 @@ class ProductController extends Controller
             }
         }
 
-        return redirect()->route('admin.products.index')
-            ->with('success', 'Product "'.$product->title.'" updated successfully.');
+        return back()->with('success', 'Product "'.$product->title.'" updated successfully.');
+    }
+
+    public function updateStatus(Request $request, Product $product)
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:active,inactive,draft',
+        ]);
+
+        $product->update(['status' => $validated['status']]);
+
+        return redirect()->back()
+            ->with('success', 'Product "'.$product->title.'" status changed to "'.$validated['status'].'".');
+    }
+
+    public function updateFeatured(Request $request, Product $product)
+    {
+        $validated = $request->validate([
+            'featured' => 'required|boolean',
+        ]);
+
+        $product->update(['featured' => $validated['featured']]);
+
+        return redirect()->back()
+            ->with('success', 'Product "'.$product->title.'" '.($validated['featured'] ? 'added to' : 'removed from').' featured.');
     }
 
     public function destroyImage(Product $product, ProductImage $image)
@@ -269,5 +318,47 @@ class ProductController extends Controller
 
         return redirect()->route('admin.products.index')
             ->with('success', 'Product deleted successfully.');
+    }
+
+    /**
+     * Category id plus the id of every descendant at any depth.
+     *
+     * @return array<int, int>
+     */
+    private function categoryIdsIncludingDescendants(int $categoryId): array
+    {
+        $ids = [$categoryId];
+        $children = Category::whereIn('parent_id', $ids)->pluck('id')->all();
+
+        while ($children) {
+            $ids = array_merge($ids, $children);
+            $children = Category::whereIn('parent_id', $children)->pluck('id')->all();
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Normalize variant input into a clean options array.
+     *
+     * @param  array<string, mixed>  $variant
+     * @return array<int, array{name: string, value: string}>
+     */
+    private function normalizeOptions(array $variant): array
+    {
+        $options = [];
+
+        if (! empty($variant['options']) && is_array($variant['options'])) {
+            foreach ($variant['options'] as $option) {
+                $name = trim((string) ($option['name'] ?? ''));
+                $value = trim((string) ($option['value'] ?? ''));
+
+                if ($name !== '' && $value !== '') {
+                    $options[] = ['name' => $name, 'value' => $value];
+                }
+            }
+        }
+
+        return $options;
     }
 }

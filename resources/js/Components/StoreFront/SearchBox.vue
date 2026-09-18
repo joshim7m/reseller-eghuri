@@ -39,6 +39,7 @@ async function fetchResults() {
 
     if (!q) {
         results.value = [];
+
         return;
     }
 
@@ -64,6 +65,7 @@ function onInput() {
 
     if (!query.value.trim()) {
         results.value = [];
+
         return;
     }
 

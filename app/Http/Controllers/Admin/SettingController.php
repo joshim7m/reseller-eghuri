@@ -19,8 +19,19 @@ class SettingController extends Controller
         return Inertia::render('Admin/Settings/SiteConfig');
     }
 
+    public function seo()
+    {
+        return Inertia::render('Admin/Settings/Seo');
+    }
+
     public function update(Request $request)
     {
+        $request->validate([
+            'delivery_areas' => 'nullable|array',
+            'delivery_areas.*.name' => 'required|string|max:100',
+            'delivery_areas.*.charge' => 'required|integer|min:0|max:9999999',
+        ]);
+
         $data = $request->except('_token', '_method');
 
         foreach ($data as $key => $value) {
@@ -30,7 +41,7 @@ class SettingController extends Controller
                 $file->move(public_path('images/settings'), $filename);
                 $value = 'images/settings/'.$filename;
             }
-            Setting::set($key, $value);
+            Setting::set($key, is_array($value) ? json_encode(array_values($value)) : $value);
         }
 
         return back()->with('success', 'Settings updated successfully.');

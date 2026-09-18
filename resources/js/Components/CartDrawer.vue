@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { ref, watch } from 'vue'
 import { useCart } from '@/composables/useCart'
 
 const enter = ref(false)

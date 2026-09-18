@@ -2,6 +2,7 @@
 import { Link, usePage } from '@inertiajs/vue3'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useQuickView } from '@/composables/useQuickView'
+import { variantOptions, isColorDimension as isColorName } from '@/composables/useVariantOptions'
 import { useWishlist } from '@/composables/useWishlist'
 
 const props = defineProps({
@@ -138,22 +139,26 @@ const featureBullets = computed(() => {
     return [...doc.querySelectorAll('li')].map(li => li.textContent.trim()).filter(Boolean)
 })
 
-// ---------- colors ----------
-const colors = computed(() => {
-    if (props.product.variants) {
-        return [...new Set(props.product.variants.map(v => v.color).filter(Boolean))]
-    }
+// ---------- variant dimensions ----------
+const primaryDimName = computed(() => {
+    const v = props.product.variants?.[0]
 
-    return props.product.colors || []
+    return v ? (variantOptions(v)[0]?.name || null) : null
 })
 
-const sizes = computed(() => {
-    if (props.product.variants) {
-        return [...new Set(props.product.variants.map(v => v.size).filter(Boolean))]
-    }
+const primaryDimValues = computed(() => {
+    if (!props.product.variants || !primaryDimName.value) {
+return []
+}
 
-    return props.product.sizes || []
+    return [...new Set(
+        props.product.variants
+            .map(v => variantOptions(v).find(o => o.name === primaryDimName.value)?.value)
+            .filter(Boolean),
+    )]
 })
+
+const isColorDimension = computed(() => isColorName(primaryDimName.value))
 
 const colorHex = (color) => {
     const map = {
@@ -275,21 +280,21 @@ const colorHex = (color) => {
 
                 <p v-if="product.sku" class="text-[11px] font-medium text-gray-400 dark:text-gray-500 truncate">SKU: {{ product.sku }}</p>
                 <div class="grid grid-cols-2 items-center gap-2">
-                    <div v-if="colors.length" class="flex items-center gap-1 ">
+                    <div v-if="primaryDimValues.length && isColorDimension" class="flex items-center gap-1">
                         <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Colors:</span>
                         <span
-                            v-for="color in colors.slice(0, 3)" :key="color"
+                            v-for="val in primaryDimValues.slice(0, 3)" :key="val"
                             class="inline-block w-2.5 h-2.5 rounded-full border border-gray-300 dark:border-gray-600"
-                            :style="{ backgroundColor: colorHex(color), backgroundImage: colorHex(color).startsWith('linear') ? colorHex(color) : 'none' }"
-                            :title="color"
+                            :style="{ backgroundColor: colorHex(val), backgroundImage: colorHex(val).startsWith('linear') ? colorHex(val) : 'none' }"
+                            :title="val"
                         ></span>
                     </div>
-                    <div v-if="sizes.length" class="flex items-center flex-wrap gap-1.5">
-                        <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Sizes:</span>
+                    <div v-if="primaryDimValues.length && !isColorDimension" class="flex items-center flex-wrap gap-1.5">
+                        <span class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide capitalize">{{ primaryDimName }}:</span>
                         <span
-                            v-for="size in sizes" :key="size"
+                            v-for="val in primaryDimValues" :key="val"
                             class="inline-flex items-center px-1.5 py-0.5 rounded-md border border-orange-200 dark:border-gray-700 bg-orange-50 dark:bg-gray-800 text-[10px] font-semibold text-orange-700 dark:text-gray-300"
-                        >{{ size }}</span>
+                        >{{ val }}</span>
                     </div>
                 </div>
 

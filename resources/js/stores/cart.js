@@ -15,7 +15,10 @@ export const useCartStore = defineStore('cart', () => {
 
     function load() {
         const stored = sessionStorage.getItem('cart')
-        if (stored) items.value = JSON.parse(stored)
+
+        if (stored) {
+items.value = JSON.parse(stored)
+}
     }
 
     function save() {
@@ -30,21 +33,25 @@ export const useCartStore = defineStore('cart', () => {
         const existing = items.value.find(
             i => i.product_id === item.product_id && i.variant_id === item.variant_id
         )
+
         if (existing) {
             existing.qty = (existing.qty || 0) + (item.qty || 1)
         } else {
             items.value.push({ ...item, qty: item.qty || 1 })
         }
+
         save()
     }
 
     function updateQuantity(index, delta) {
         const newQty = (items.value[index]?.qty || 0) + delta
+
         if (newQty < 1) {
             items.value.splice(index, 1)
         } else {
             items.value[index].qty = newQty
         }
+
         save()
     }
 

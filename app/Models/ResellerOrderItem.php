@@ -21,10 +21,16 @@ class ResellerOrderItem extends Model
         'sale_price',
         'total',
         'product_variant_id',
-        'size',
-        'color',
+        'options',
         'purchase_image_path',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'options' => 'array',
+        ];
+    }
 
     public function resellerOrder(): BelongsTo
     {

@@ -1,7 +1,7 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 const props = defineProps({
     exports: { type: Array, required: true },

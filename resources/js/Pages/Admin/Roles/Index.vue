@@ -1,6 +1,6 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link } from '@inertiajs/vue3'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 defineProps({
     roles: { type: Array, required: true },
@@ -24,7 +24,7 @@ defineProps({
                             <tr class="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
                                 <th class="text-left px-4 py-3 font-medium">Role</th>
                                 <th class="text-left px-4 py-3 font-medium">Slug</th>
-                                <th class="text-center px-4 py-3 font-medium">Users</th>
+                                <th class="text-center px-4 py-3 font-medium">Permissions</th>
                                 <th class="text-right px-4 py-3 font-medium">Actions</th>
                             </tr>
                         </thead>
@@ -33,7 +33,7 @@ defineProps({
                                 <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ role.name }}</td>
                                 <td class="px-4 py-3 text-gray-500 dark:text-gray-400 font-mono text-xs">{{ role.slug }}</td>
                                 <td class="px-4 py-3 text-center">
-                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold">{{ role.users_count }}</span>
+                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold">{{ role.permissions_count }}</span>
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <Link :href="route('admin.roles.edit', role.id)" class="w-8 h-8 rounded-lg inline-flex items-center justify-center text-blue-600 hover:text-white bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-600 dark:hover:bg-blue-600 transition" title="Edit Permissions">

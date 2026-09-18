@@ -9,8 +9,7 @@ class ProductVariant extends Model
 {
     protected $fillable = [
         'product_id',
-        'size',
-        'color',
+        'options',
         'sku',
         'unit_price',
         'sale_price',
@@ -23,6 +22,7 @@ class ProductVariant extends Model
         return [
             'unit_price' => 'integer',
             'sale_price' => 'integer',
+            'options' => 'array',
         ];
     }
 

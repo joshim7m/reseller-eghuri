@@ -61,8 +61,8 @@ class OrderSeeder extends Seeder
                 'status' => 'processing',
                 'payment_method' => 'cash_on_delivery',
                 'items' => [
-                    ['item_name' => 'Classic Denim Jacket (M / Blue)', 'quantity' => 1, 'price' => 999, 'variant_product' => 'Classic Denim Jacket', 'size' => 'M', 'color' => 'Blue'],
-                    ['item_name' => 'Ceramic Coffee Mug Set (Assorted)', 'quantity' => 3, 'price' => 299, 'variant_product' => 'Ceramic Coffee Mug Set', 'size' => null, 'color' => 'Assorted'],
+                    ['item_name' => 'Classic Denim Jacket (M / Blue)', 'quantity' => 1, 'price' => 999, 'variant_product' => 'Classic Denim Jacket', 'options' => [['name' => 'size', 'value' => 'M'], ['name' => 'color', 'value' => 'Blue']]],
+                    ['item_name' => 'Ceramic Coffee Mug Set (Assorted)', 'quantity' => 3, 'price' => 299, 'variant_product' => 'Ceramic Coffee Mug Set', 'options' => [['name' => 'color', 'value' => 'Assorted']]],
                 ],
                 'paid_amount' => 0,
             ],
@@ -72,8 +72,8 @@ class OrderSeeder extends Seeder
                 'status' => 'completed',
                 'payment_method' => 'credit_card',
                 'items' => [
-                    ['item_name' => 'Running Sneakers (9 / Black)', 'quantity' => 1, 'price' => 999, 'variant_product' => 'Running Sneakers', 'size' => '9', 'color' => 'Black'],
-                    ['item_name' => 'Wireless Bluetooth Headphones (Black)', 'quantity' => 2, 'price' => 299, 'variant_product' => 'Wireless Bluetooth Headphones', 'size' => null, 'color' => 'Black'],
+                    ['item_name' => 'Running Sneakers (9 / Black)', 'quantity' => 1, 'price' => 999, 'variant_product' => 'Running Sneakers', 'options' => [['name' => 'size', 'value' => '9'], ['name' => 'color', 'value' => 'Black']]],
+                    ['item_name' => 'Wireless Bluetooth Headphones (Black)', 'quantity' => 2, 'price' => 299, 'variant_product' => 'Wireless Bluetooth Headphones', 'options' => [['name' => 'color', 'value' => 'Black']]],
                 ],
                 'paid_amount' => 1997,
             ],
@@ -99,6 +99,8 @@ class OrderSeeder extends Seeder
             ]);
 
             foreach ($items as $item) {
+                $options = $item['options'] ?? null;
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'item_name' => $item['item_name'],
@@ -106,10 +108,9 @@ class OrderSeeder extends Seeder
                     'price_at_purchase' => $item['price'],
                     'total' => $item['price'] * $item['quantity'],
                     'product_variant_id' => isset($item['variant_product'])
-                        ? $this->findVariantId($item['variant_product'], $item['size'] ?? null, $item['color'] ?? null)
+                        ? $this->findVariantId($item['variant_product'], $options)
                         : null,
-                    'size' => $item['size'] ?? null,
-                    'color' => $item['color'] ?? null,
+                    'options' => $options,
                 ]);
             }
 
@@ -129,18 +130,37 @@ class OrderSeeder extends Seeder
         }
     }
 
-    private function findVariantId(string $productName, ?string $size = null, ?string $color = null): ?int
+    /**
+     * Find a variant by product name + optional options array.
+     *
+     * @param  list<array{name: string, value: string}>|null  $options
+     */
+    private function findVariantId(string $productName, ?array $options = null): ?int
     {
         $query = ProductVariant::query()->whereHas(
             'product',
             fn ($q) => $q->where('title', 'like', "%{$productName}%")
         );
 
-        $variant = (clone $query)
-            ->when($size !== null, fn ($q) => $q->where('size', $size))
-            ->when($color !== null, fn ($q) => $q->where('color', $color))
-            ->first();
+        if (! empty($options)) {
+            $variant = (clone $query)->first(function ($variant) use ($options) {
+                $variantOptions = $variant->options ?? [];
 
-        return $variant?->id ?? $query->first()?->id;
+                if (count($variantOptions) !== count($options)) {
+                    return false;
+                }
+
+                $sortedA = collect($variantOptions)->sortBy('name')->values()->all();
+                $sortedB = collect($options)->sortBy('name')->values()->all();
+
+                return $sortedA === $sortedB;
+            });
+
+            if ($variant) {
+                return $variant->id;
+            }
+        }
+
+        return $query->first()?->id;
     }
 }

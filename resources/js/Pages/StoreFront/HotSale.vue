@@ -1,20 +1,14 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3'
-import { ref, computed } from 'vue'
-import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
+import { Link, router } from '@inertiajs/vue3'
+import { ref } from 'vue'
 import FilterSidebar from '@/Components/StoreFront/FilterSidebar.vue'
 import HomeProductCard from '@/Components/StoreFront/HomeProductCard.vue'
+import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 
 const props = defineProps({
     products: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     categories: { type: Array, default: () => [] }
-})
-
-const randomCategory = computed(() => {
-    const withImage = props.categories.filter(c => c.image_url)
-    if (!withImage.length) return null
-    return withImage[Math.floor(Math.random() * withImage.length)]
 })
 
 const filterOpen = ref(false)
@@ -27,22 +21,15 @@ function changeSort(event) {
 }
 
 function goToPage(url) {
-    if (url) router.get(url, {}, { preserveScroll: true, preserveState: true })
+    if (url) {
+router.get(url, {}, { preserveScroll: true, preserveState: true })
+}
 }
 </script>
 
 <template>
-    <Head title="Hot Sale" />
-
     <FrontEndMaster>
-        <section class="mb-12 border-b border-outline-variant dark:border-[#3a302e]">
-            <div class="relative w-full h-[300px] md:h-[400px] overflow-hidden rounded-xl mb-8 bg-gradient-to-br from-sale-price/40 via-surface to-surface-variant dark:from-[#D97B73]/20 dark:via-[#241d1c] dark:to-[#2e2523]">
-                <img v-if="randomCategory" :src="randomCategory.image_url" :alt="randomCategory.name" class="w-full h-full object-cover" loading="lazy" />
-                <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-            </div>
-            <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-charcoal dark:text-[#f9eeed] uppercase tracking-tight mb-4">Hot Sale</h1>
-            <p class="text-on-surface-variant dark:text-[#cbb8b6] max-w-2xl">Featured deals and trending products.</p>
-        </section>
+        <h1 class="sr-only">Hot Sale</h1>
 
         <div class="flex lg:hidden items-center gap-2 mb-4">
             <button type="button" @click="filterOpen = true" class="flex items-center gap-2 bg-white dark:bg-[#241d1c] border border-outline-variant dark:border-[#3a302e] rounded-lg px-4 py-2 text-sm text-charcoal dark:text-[#f9eeed] transition">

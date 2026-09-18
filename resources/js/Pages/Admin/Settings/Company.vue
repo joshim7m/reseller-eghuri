@@ -1,7 +1,7 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import { usePage } from '@inertiajs/vue3'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 const settings = usePage().props.settings || {}
 

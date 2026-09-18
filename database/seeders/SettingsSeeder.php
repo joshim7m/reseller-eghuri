@@ -30,7 +30,6 @@ class SettingsSeeder extends Seeder
             'x_handler' => '',
             'whatsapp_number' => '+8801779967919',
             'telegram_number' => '+8801779967919',
-
         ];
 
         foreach ($settings as $key => $value) {

@@ -7,6 +7,7 @@ use App\Models\ResellerOrderItem;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 class ResellerOrderSeeder extends Seeder
 {
@@ -20,9 +21,8 @@ class ResellerOrderSeeder extends Seeder
             return;
         }
 
-        $orders = [
+        $templates = [
             [
-                'order_number' => 'RSL-001',
                 'status' => 'completed',
                 'payment_method' => 'bank_transfer',
                 'payment_status' => 'paid',
@@ -33,7 +33,6 @@ class ResellerOrderSeeder extends Seeder
                 ],
             ],
             [
-                'order_number' => 'RSL-002',
                 'status' => 'processing',
                 'payment_method' => 'cash-on',
                 'payment_status' => 'unpaid',
@@ -44,7 +43,6 @@ class ResellerOrderSeeder extends Seeder
                 ],
             ],
             [
-                'order_number' => 'RSL-003',
                 'status' => 'pending',
                 'payment_method' => 'credit_card',
                 'payment_status' => 'unpaid',
@@ -56,7 +54,6 @@ class ResellerOrderSeeder extends Seeder
                 ],
             ],
             [
-                'order_number' => 'RSL-004',
                 'status' => 'completed',
                 'payment_method' => 'bank_transfer',
                 'payment_status' => 'paid',
@@ -67,7 +64,6 @@ class ResellerOrderSeeder extends Seeder
                 ],
             ],
             [
-                'order_number' => 'RSL-005',
                 'status' => 'cancelled',
                 'payment_method' => 'cash-on',
                 'payment_status' => 'unpaid',
@@ -80,36 +76,96 @@ class ResellerOrderSeeder extends Seeder
 
         $shippingAddress = 'House 12, Road 5, Gulshan-1, Dhaka 1212';
 
-        foreach ($resellers as $reseller) {
-            foreach ($orders as $data) {
-                $items = $data['items'];
-                unset($data['items']);
-                $data['order_number'] = $data['order_number'].'-'.$reseller->id;
+        $dates = $this->orderDates();
 
-                $totalAmount = collect($items)->sum(fn ($i) => $i['unit_price'] * $i['quantity']);
-                $deliveryCharge = $totalAmount > 50000 ? 0 : 3000;
+        $orders = [];
+        foreach ($dates as $date) {
+            $template = $templates[array_rand($templates)];
+            $orders[] = [
+                'template' => $template,
+                'created_at' => $date,
+            ];
+        }
 
-                $data['total_amount'] = $totalAmount + $deliveryCharge;
-                $data['delivery_charge'] = $deliveryCharge;
+        foreach ($orders as $index => $order) {
+            $reseller = $resellers[$index % $resellers->count()];
+            $template = $order['template'];
+            $items = $template['items'];
 
-                $order = ResellerOrder::create(array_merge($data, [
-                    'user_id' => $reseller->id,
-                    'shipping_address' => $shippingAddress,
-                ]));
+            $totalAmount = collect($items)->sum(fn ($i) => $i['unit_price'] * $i['quantity']);
+            $deliveryCharge = $totalAmount > 50000 ? 0 : 3000;
 
-                foreach ($items as $item) {
-                    $unitPrice = $item['unit_price'];
-                    $salePrice = $item['sale_price'] ?? $unitPrice;
-                    ResellerOrderItem::create([
-                        'reseller_order_id' => $order->id,
-                        'product_name' => $item['product_name'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $unitPrice,
-                        'sale_price' => $salePrice,
-                        'total' => $unitPrice * $item['quantity'],
-                    ]);
-                }
+            $resellerOrder = ResellerOrder::create([
+                'user_id' => $reseller->id,
+                'order_number' => 'RSL-'.str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
+                'status' => $template['status'],
+                'payment_method' => $template['payment_method'],
+                'payment_status' => $template['payment_status'],
+                'notes' => $template['notes'],
+                'total_amount' => $totalAmount + $deliveryCharge,
+                'delivery_charge' => $deliveryCharge,
+                'shipping_address' => $shippingAddress,
+            ]);
+
+            $resellerOrder->created_at = $order['created_at'];
+            $resellerOrder->save();
+
+            foreach ($items as $item) {
+                $unitPrice = $item['unit_price'];
+                $salePrice = $item['sale_price'] ?? $unitPrice;
+                ResellerOrderItem::create([
+                    'reseller_order_id' => $resellerOrder->id,
+                    'product_name' => $item['product_name'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $unitPrice,
+                    'sale_price' => $salePrice,
+                    'total' => $unitPrice * $item['quantity'],
+                ]);
             }
         }
+    }
+
+    /**
+     * Build 22 created_at timestamps: 5 today, 7 later this week, 10
+     * earlier this month, so the Week/Month report counts are cumulative.
+     *
+     * @return list<Carbon>
+     */
+    private function orderDates(): array
+    {
+        $now = now();
+        $todayStart = $now->copy()->startOfDay();
+        $weekStart = $now->copy()->startOfWeek(Carbon::SUNDAY);
+        $monthStart = $now->copy()->startOfMonth();
+
+        $dates = [];
+
+        for ($i = 0; $i < 5; $i++) {
+            $dates[] = $this->randomTime($todayStart, $now);
+        }
+
+        $weekUpper = $todayStart->copy()->subSecond();
+        for ($i = 0; $i < 7; $i++) {
+            $dates[] = $this->randomTime($weekStart, $weekUpper);
+        }
+
+        $monthUpper = $weekStart->copy()->subSecond();
+        for ($i = 0; $i < 10; $i++) {
+            $dates[] = $this->randomTime($monthStart, $monthUpper);
+        }
+
+        return $dates;
+    }
+
+    private function randomTime(Carbon $from, Carbon $to): Carbon
+    {
+        if ($from->greaterThanOrEqualTo($to)) {
+            return $from->copy();
+        }
+
+        $min = $from->getTimestamp();
+        $max = $to->getTimestamp();
+
+        return Carbon::createFromTimestamp(random_int($min, $max));
     }
 }

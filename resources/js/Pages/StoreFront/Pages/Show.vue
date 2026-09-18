@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue';
 
 const { page } = defineProps({
@@ -8,8 +8,6 @@ const { page } = defineProps({
 </script>
 
 <template>
-    <Head :title="page.title" />
-
     <FrontEndMaster>
         <div class="max-w-3xl mx-auto">
             <Link :href="route('home')" class="inline-flex items-center gap-1.5 text-sm font-medium text-on-surface-variant transition hover:text-primary dark:text-[#cbb8b6] dark:hover:text-[#f6b7b2] mb-6">

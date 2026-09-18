@@ -1,7 +1,7 @@
 <script setup>
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import RichTextEditor from '@/Components/Admin/RichTextEditor.vue';
 import AdminMaster from '@/Layouts/Admin/AdminMaster.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const form = useForm({
     title: '',
@@ -29,6 +29,7 @@ function submit() {
     if (!form.slug) {
         form.slug = slugify(form.title);
     }
+
     form.post(route('admin.pages.store'));
 }
 </script>

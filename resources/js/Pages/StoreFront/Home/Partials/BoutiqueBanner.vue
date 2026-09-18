@@ -8,7 +8,11 @@ const props = defineProps({
 
 const boutiqueCategory = computed(() => {
     const topLevel = props.categories.filter(c => !c.parent_id && c.image_url);
-    if (!topLevel.length) return null;
+
+    if (!topLevel.length) {
+return null;
+}
+
     return topLevel[Math.floor(Math.random() * topLevel.length)];
 });
 </script>

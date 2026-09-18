@@ -1,6 +1,6 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link } from '@inertiajs/vue3'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 defineProps({
     users: { type: Object, required: true },

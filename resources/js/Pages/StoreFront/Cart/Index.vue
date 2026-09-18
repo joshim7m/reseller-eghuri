@@ -1,8 +1,8 @@
 <script setup>
-import { computed } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'
-import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
+import { computed } from 'vue'
 import { useCart } from '@/composables/useCart'
+import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 
 const { items: cart, total, updateQuantity, removeItem } = useCart()
 </script>

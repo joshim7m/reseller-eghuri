@@ -42,8 +42,9 @@ class CheckoutController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',
             'items.*.variant_id' => 'nullable|integer|exists:product_variants,id',
-            'items.*.size' => 'nullable|string|max:50',
-            'items.*.color' => 'nullable|string|max:50',
+            'items.*.options' => 'nullable|array',
+            'items.*.options.*.name' => 'required|string|max:50',
+            'items.*.options.*.value' => 'required|string|max:50',
             'items.*.item_name' => 'required|string|max:255',
             'items.*.quantity' => 'required|integer|min:1|max:100',
             'items.*.price' => 'required|numeric|min:0|max:99999999',
@@ -99,8 +100,7 @@ class CheckoutController extends Controller
                     'price_at_purchase' => $item['price'],
                     'total' => $item['price'] * $item['quantity'],
                     'product_variant_id' => $item['variant_id'] ?: null,
-                    'size' => $item['size'] ?: null,
-                    'color' => $item['color'] ?: null,
+                    'options' => $item['options'] ?? null,
                 ]);
             }
 

@@ -15,10 +15,13 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             UserSeeder::class,
             CatalogSeeder::class,
-            //OrderSeeder::class,
+            // OrderSeeder::class,
             ResellerOrderSeeder::class,
 
+            SliderSeeder::class,
+
             SettingsSeeder::class,
+            SeoSettingsSeeder::class,
             InstagramImagesSeeder::class,
             SocialMediaSeeder::class,
             FaqSeeder::class,

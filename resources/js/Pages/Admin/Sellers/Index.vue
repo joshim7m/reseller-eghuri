@@ -1,7 +1,7 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 defineProps({
     sellers: { type: Object, required: true },

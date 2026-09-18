@@ -33,6 +33,7 @@ class HandleInertiaRequests extends Middleware
             'socialMedias' => SocialMedia::all(),
             'pages' => Page::active()->orderBy('title')->get(),
             'categories' => Category::with('children')->whereNull('parent_id')->orderBy('name')->get(),
+            'headerCategories' => fn () => Category::with('children')->where('slug', '!=', 'health-&-beauty')->orderBy('id')->get(),
         ];
     }
 }

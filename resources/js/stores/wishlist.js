@@ -18,11 +18,13 @@ export const useWishlistStore = defineStore('wishlist', () => {
     function toggle(productId) {
         const num = Number(productId)
         const idx = ids.value.indexOf(num)
+
         if (idx === -1) {
             ids.value.push(num)
         } else {
             ids.value.splice(idx, 1)
         }
+
         save()
     }
 

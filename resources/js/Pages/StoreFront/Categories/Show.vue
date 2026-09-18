@@ -1,9 +1,9 @@
 <script setup>
-import { ref, computed } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
-import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
+import { ref, computed } from 'vue'
 import FilterSidebar from '@/Components/StoreFront/FilterSidebar.vue'
 import HomeProductCard from '@/Components/StoreFront/HomeProductCard.vue'
+import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 
 const props = defineProps({
     category: { type: Object, default: () => ({}) },
@@ -17,7 +17,11 @@ const urlParams = new URL(window.location.href).searchParams
 const subcategories = computed(() => props.category.children || [])
 const activeSubcategory = computed(() => {
     const catId = urlParams.get('categories')
-    if (!catId) return null
+
+    if (!catId) {
+return null
+}
+
     return subcategories.value.find(c => String(c.id) === catId) || null
 })
 
@@ -28,34 +32,15 @@ function changeSort(event) {
 }
 
 function goToPage(url) {
-    if (url) router.get(url, {}, { preserveScroll: true, preserveState: true })
+    if (url) {
+router.get(url, {}, { preserveScroll: true, preserveState: true })
+}
 }
 </script>
 
 <template>
-    <Head :title="category.name || 'Category'" />
-
     <FrontEndMaster>
-        <!-- Hero Banner -->
-        <section class="mb-12 border-b border-outline-variant dark:border-[#3a302e]">
-            <div class="relative w-full h-[300px] md:h-[400px] overflow-hidden rounded-xl mb-8">
-                <img
-                    v-if="category.image_url"
-                    :src="category.image_url"
-                    :alt="category.name"
-                    class="w-full h-full object-cover"
-                />
-                <div v-else class="w-full h-full bg-gradient-to-br from-surface-container to-surface-variant dark:from-[#241d1c] dark:to-[#2e2523]"></div>
-                <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
-            </div>
-            <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-charcoal dark:text-[#f9eeed] uppercase tracking-tight mb-4">
-                {{ category.name }}
-            </h1>
-            <p v-if="category.description" class="text-on-surface-variant dark:text-[#cbb8b6] max-w-2xl">
-                {{ category.description }}
-            </p>
-        </section>
-
+        <h1 class="sr-only">{{ category.name }}</h1>
         <!-- Mobile filter toggle -->
         <div class="flex lg:hidden items-center gap-2 mb-4">
             <button
@@ -114,7 +99,7 @@ function goToPage(url) {
 
                     <!-- Filters -->
                     <div class="border-t border-outline-variant dark:border-[#3a302e] pt-8">
-                        <FilterSidebar :filters="filters" />
+                        <FilterSidebar :filters="filters" :show-categories="false" />
                     </div>
                 </div>
             </aside>

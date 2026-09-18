@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'
+import { computed } from 'vue'
 import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 
 const props = defineProps({
@@ -22,7 +22,10 @@ const paymentStatusColors = {
 }
 
 const subtotal = computed(() => {
-    if (!props.order.items?.length) return 0
+    if (!props.order.items?.length) {
+return 0
+}
+
     return props.order.items.reduce((sum, item) => sum + Number(item.total || item.price_at_purchase * item.quantity), 0)
 })
 
@@ -31,7 +34,10 @@ function formatPrice(price) {
 }
 
 function formatDate(date) {
-    if (!date) return ''
+    if (!date) {
+return ''
+}
+
     return new Date(date).toLocaleDateString('en-BD', {
         year: 'numeric', month: 'short', day: 'numeric',
         hour: '2-digit', minute: '2-digit'
@@ -67,9 +73,8 @@ function itemImage(item) {
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-800">{{ item.item_name }}</p>
-                                <div v-if="item.size || item.color" class="flex flex-wrap gap-1.5 mt-1">
-                                    <span v-if="item.size" class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">Size: {{ item.size }}</span>
-                                    <span v-if="item.color" class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">Color: {{ item.color }}</span>
+                                <div v-if="item.options?.length" class="flex flex-wrap gap-1.5 mt-1">
+                                    <span v-for="opt in item.options" :key="opt.name" class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded capitalize">{{ opt.name }}: {{ opt.value }}</span>
                                 </div>
                                 <p class="text-xs text-gray-500 mt-0.5">{{ formatPrice(item.price_at_purchase) }} each &times; {{ item.quantity }}</p>
                             </div>

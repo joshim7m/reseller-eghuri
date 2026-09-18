@@ -1,6 +1,6 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 const { order } = defineProps({
     order: { type: Object, required: true },
@@ -41,11 +41,13 @@ function issueInvoice() {
 
 function statusBadge(s) {
     const map = { pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', processing: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }
+
     return map[s] || 'bg-gray-100 text-gray-800'
 }
 
 function paymentBadge(s) {
     const map = { paid: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', unpaid: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', partial: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' }
+
     return map[s] || 'bg-gray-100 text-gray-800'
 }
 </script>
@@ -87,7 +89,9 @@ function paymentBadge(s) {
                                                 </div>
                                                 <div class="min-w-0">
                                                     <p class="font-medium text-gray-900 dark:text-white">{{ item.item_name }}</p>
-                                                    <p v-if="item.size || item.color" class="text-xs text-gray-500 dark:text-gray-400">Variant: {{ item.size }} / {{ item.color }}</p>
+                                                    <p v-if="item.options?.length" class="text-xs text-gray-500 dark:text-gray-400">
+                                                        Variant: {{ item.options.map(o => o.value).join(' / ') }}
+                                                    </p>
                                                     <p v-if="item.variant?.sku" class="text-xs text-gray-500 dark:text-gray-400">SKU: {{ item.variant.sku }}</p>
                                                 </div>
                                             </div>

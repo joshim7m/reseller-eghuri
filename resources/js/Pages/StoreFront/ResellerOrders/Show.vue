@@ -1,7 +1,7 @@
 <script setup>
-import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 import { Head, Link } from '@inertiajs/vue3'
 import { computed } from 'vue'
+import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 
 const props = defineProps({
     resellerOrder: { type: Object, required: true },
@@ -22,6 +22,7 @@ function statusColor(status) {
         completed: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
         cancelled: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     }
+
     return map[status] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
 }
 
@@ -32,28 +33,12 @@ function statusDot(status) {
         completed: 'bg-emerald-500',
         cancelled: 'bg-red-500',
     }
+
     return map[status] || 'bg-gray-400'
 }
 
-function paymentColor(status) {
-    const map = {
-        paid: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-        unpaid: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    }
-    return map[status] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-}
-
-function transactionColor(status) {
-    const map = {
-        completed: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-        pending: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-        cancelled: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    }
-    return map[status] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-}
-
-function methodLabel(method) {
-    return (method || '').replaceAll('-', ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+function itemImage(item) {
+    return item.variant?.image?.image_url || item.variant?.image?.image_path || item.variant?.product?.image_url || null
 }
 
 function formatDateTime(date) {
@@ -88,6 +73,10 @@ function formatDateTime(date) {
                         <h2 class="text-lg font-bold text-charcoal dark:text-[#f9eeed] mb-4">Order Items</h2>
                         <div class="divide-y divide-outline-variant dark:divide-[#3a302e]">
                             <div v-for="item in resellerOrder.items" :key="item.id" class="flex items-center gap-3 py-3">
+                                <img v-if="itemImage(item)" :src="itemImage(item)" :alt="item.product_name" class="w-12 h-12 rounded-lg object-cover bg-gray-100 dark:bg-gray-800 shrink-0" loading="lazy">
+                                <div v-else class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600 shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"/></svg>
+                                </div>
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-medium text-charcoal dark:text-[#f9eeed]">{{ item.product_name }}</p>
                                     <p class="text-xs text-on-surface-variant dark:text-[#cbb8b6] mt-0.5">
@@ -102,9 +91,9 @@ function formatDateTime(date) {
                                             <span class="mx-1.5 text-outline-variant dark:text-[#3a302e]">|</span>
                                             <span class="font-mono text-emerald-600 dark:text-emerald-400">Profit: {{ formatPrice(((item.sale_price ?? item.unit_price) - item.unit_price) * item.quantity) }}</span>
                                         </template>
-                                        <template v-if="item.size || item.color">
+                                        <template v-if="item.options?.length">
                                             <span class="mx-1.5 text-outline-variant dark:text-[#3a302e]">|</span>
-                                            <span v-if="item.size" class="font-mono">{{ item.size }}</span><span v-if="item.size && item.color" class="mx-0.5">/</span><span v-if="item.color" class="font-mono">{{ item.color }}</span>
+                                            <span class="font-mono">{{ item.options.map(o => o.value).join(' / ') }}</span>
                                         </template>
                                     </p>
                                 </div>
@@ -132,31 +121,6 @@ function formatDateTime(date) {
                             </div>
 
                             <hr class="border-outline-variant dark:border-[#3a302e]" />
-
-                            <div class="flex justify-between items-center">
-                                <span class="text-on-surface-variant dark:text-[#cbb8b6]">Payment</span>
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize" :class="paymentColor(resellerOrder.payment_status)">
-                                    {{ resellerOrder.payment_status }}
-                                </span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-on-surface-variant dark:text-[#cbb8b6]">Method</span>
-                                <span class="text-charcoal dark:text-[#f9eeed] capitalize">{{ methodLabel(resellerOrder.payment_method) }}</span>
-                            </div>
-
-                            <template v-if="resellerOrder.transaction">
-                                <hr class="border-outline-variant dark:border-[#3a302e]" />
-                                <div class="flex justify-between items-center">
-                                    <span class="text-on-surface-variant dark:text-[#cbb8b6]">Wallet Transaction</span>
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize" :class="transactionColor(resellerOrder.transaction.status)">
-                                        {{ resellerOrder.transaction.status }}
-                                    </span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-on-surface-variant dark:text-[#cbb8b6]">Transaction Amount</span>
-                                    <span class="font-mono text-sm text-emerald-600 dark:text-emerald-400">{{ formatPrice(resellerOrder.transaction.amount) }}</span>
-                                </div>
-                            </template>
                         </div>
                     </div>
 

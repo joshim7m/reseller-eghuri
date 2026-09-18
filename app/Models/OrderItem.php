@@ -14,9 +14,15 @@ class OrderItem extends Model
         'price_at_purchase',
         'total',
         'product_variant_id',
-        'size',
-        'color',
+        'options',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'options' => 'array',
+        ];
+    }
 
     public function order(): BelongsTo
     {

@@ -1,8 +1,8 @@
 <script setup>
-import { computed, watch } from 'vue'
-import { EditorContent, useEditor } from '@tiptap/vue-3'
-import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
+import StarterKit from '@tiptap/starter-kit'
+import { EditorContent, useEditor } from '@tiptap/vue-3'
+import { computed, watch } from 'vue'
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
@@ -41,7 +41,10 @@ watch(() => props.modelValue, (value) => {
 const isActive = (name, attrs = {}) => editor.value?.isActive(name, attrs) ?? false
 
 const can = (name) => {
-    if (!editor.value) return false
+    if (!editor.value) {
+return false
+}
+
     return editor.value.can().chain().focus()[name]().run()
 }
 

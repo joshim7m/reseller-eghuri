@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\CheckStatus;
 use App\Http\Middleware\HandleInertiaRequests;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -33,6 +34,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin*') || $request->routeIs('admin.*')
                 ? route('admin.login')
                 : route('login')
+        );
+
+        RedirectIfAuthenticated::redirectUsing(fn (Request $request) => $request->user()?->user_type === 'admin'
+            ? route('admin.dashboard')
+            : route('home')
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {

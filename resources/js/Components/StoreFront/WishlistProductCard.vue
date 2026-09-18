@@ -29,8 +29,14 @@ const hasDiscount = computed(
 const images = computed(() => (props.product.images || []).filter(Boolean));
 
 const imageUrl = (img) => {
-    if (!img) return null;
-    if (typeof img === 'string') return img;
+    if (!img) {
+return null;
+}
+
+    if (typeof img === 'string') {
+return img;
+}
+
     return img.image_url || img.image_path || img.url || img.src || null;
 };
 

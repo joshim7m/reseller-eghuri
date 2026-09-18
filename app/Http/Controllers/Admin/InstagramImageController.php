@@ -11,7 +11,7 @@ class InstagramImageController extends Controller
 {
     public function index()
     {
-        $images = InstagramImage::latest()->get();
+        $images = InstagramImage::latest()->paginate(15)->withQueryString();
 
         return Inertia::render('Admin/InstagramImages/Index', compact('images'));
     }

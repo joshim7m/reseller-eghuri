@@ -29,8 +29,7 @@ class ResellerOrderItemFactory extends Factory
             'unit_price' => $unitPrice,
             'sale_price' => $salePrice,
             'total' => $salePrice * $quantity,
-            'size' => null,
-            'color' => null,
+            'options' => null,
         ];
     }
 }

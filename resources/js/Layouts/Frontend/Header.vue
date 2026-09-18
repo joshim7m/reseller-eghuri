@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import NotificationDropdown from '@/Components/StoreFront/NotificationDropdown.vue';
 import SearchBox from '@/Components/StoreFront/SearchBox.vue';
 import { useWishlist } from '@/composables/useWishlist';
 
@@ -42,6 +43,7 @@ function onClickOutside(e) {
     if (userMenuEl.value && !userMenuEl.value.contains(e.target)) {
         userMenuOpen.value = false;
     }
+
     if (catMegaEl.value && !catMegaEl.value.contains(e.target)) {
         catMegaOpen.value = false;
     }
@@ -56,10 +58,24 @@ function openCatMega() {
 }
 
 function scheduleCloseCatMega() {
-    catMegaTimer = setTimeout(() => { catMegaOpen.value = false; }, 150);
+    catMegaTimer = setTimeout(() => {
+ catMegaOpen.value = false; 
+}, 150);
 }
 
-const categories = computed(() => page.props.categories || []);
+const categories = computed(() => page.props.headerCategories || page.props.categories || []);
+
+const catTints = [
+    { bg: 'bg-[#e3ecff] dark:bg-[#24314d]', text: 'text-[#2563eb] dark:text-[#93c5fd]' },
+    { bg: 'bg-[#fbe7f2] dark:bg-[#42223a]', text: 'text-[#db2777] dark:text-[#f9a8d4]' },
+    { bg: 'bg-[#e8f8ef] dark:bg-[#1e3d2c]', text: 'text-[#16a34a] dark:text-[#86efac]' },
+    { bg: 'bg-[#fff3e0] dark:bg-[#422c14]', text: 'text-[#ea580c] dark:text-[#fdba74]' },
+    { bg: 'bg-[#efebff] dark:bg-[#2e2a4d]', text: 'text-[#7c3aed] dark:text-[#c4b5fd]' },
+    { bg: 'bg-[#e0f5fa] dark:bg-[#173a42]', text: 'text-[#0891b2] dark:text-[#67e8f9]' },
+    { bg: 'bg-[#fde9df] dark:bg-[#42221c]', text: 'text-[#e11d48] dark:text-[#fda4af]' },
+    { bg: 'bg-[#f7f5d9] dark:bg-[#3b3a12]', text: 'text-[#ca8a04] dark:text-[#fde047]' },
+];
+const catTint = (i) => catTints[i % catTints.length];
 
 const navLinks = [
     { label: 'New Arrivals', href: () => route('products.new-arrivals'), dropdown: false },
@@ -68,7 +84,7 @@ const navLinks = [
 </script>
 
 <template>
-    <header class="sticky top-0 z-40 w-full bg-white dark:bg-[#171212] border-b border-surface-container-high dark:border-[#3a302e]">
+    <header class="sticky top-0 z-40 w-full bg-gradient-to-r from-[#e3ecff] via-[#eae5ff] to-[#ffe7f0] dark:bg-[#171212] dark:bg-none border-b border-surface-container-high dark:border-[#3a302e]">
         <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:h-16 md:gap-4 md:px-6 md:py-0">
             <!-- Left: Mobile menu button + Logo -->
             <div class="flex shrink-0 items-center gap-2">
@@ -152,6 +168,8 @@ const navLinks = [
                     <span v-if="wishlistCount" class="absolute right-0 top-0 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-sale-price px-1 text-[10px] font-bold leading-none text-white">{{ wishlistCount }}</span>
                 </Link>
 
+                <NotificationDropdown />
+                
                 <!-- Auth area -->
                 <template v-if="auth?.user">
                     <div ref="userMenuEl" class="relative">
@@ -169,10 +187,6 @@ const navLinks = [
                             <Link :href="route('profile')" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal transition hover:bg-surface-container-low dark:text-[#f9eeed] dark:hover:bg-[#2e2523]">
                                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">person</span>
                                 Profile
-                            </Link>
-                            <Link :href="route('orders.index')" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-charcoal transition hover:bg-surface-container-low dark:text-[#f9eeed] dark:hover:bg-[#2e2523]">
-                                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">receipt_long</span>
-                                Orders
                             </Link>
                             <Link
                                 v-if="auth.user.user_type === 'reseller'"
@@ -222,39 +236,45 @@ const navLinks = [
                 ref="catMegaEl"
                 @mouseenter="openCatMega"
                 @mouseleave="scheduleCloseCatMega"
-                class="mx-auto max-w-7xl border-t border-surface-container-high bg-white px-4 py-6 dark:bg-[#241d1c] dark:border-[#3a302e] md:px-6"
+                class="absolute left-1/2 top-full z-50 w-full max-w-7xl -translate-x-1/2 border-t border-surface-container-high bg-[#f8f9ff] px-4 py-6 shadow-lg shadow-black/5 hover:ring-1 hover:ring-[#a5b4fc]/40 dark:border-[#3a302e] dark:bg-[#241d1c] dark:hover:ring-[#5a539a]/50 md:px-6"
             >
-                    <div class="grid grid-cols-4 gap-4 sm:grid-cols-6 lg:grid-cols-8">
+                <div>
+                    <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                         <Link
-                            v-for="cat in categories"
+                            v-for="(cat, i) in categories"
                             :key="cat.id"
                             :href="route('category.show', cat.slug || cat.id)"
-                            class="group flex flex-col items-center gap-2 rounded-xl p-2 transition hover:bg-surface-container-low dark:hover:bg-[#2e2523]"
+                            class="group flex items-center gap-3 rounded-xl border border-transparent bg-white/60 p-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#a5b4fc]/50 hover:bg-white hover:ring-1 hover:ring-[#a5b4fc]/40 hover:shadow-md hover:shadow-black/5 dark:bg-white/5 dark:hover:border-[#5a539a] dark:hover:bg-white/10 dark:hover:ring-[#5a539a]/50"
                             @click="catMegaOpen = false"
                         >
-                            <div class="h-14 w-14 overflow-hidden rounded-full bg-surface-container dark:bg-[#2e2523] lg:h-16 lg:w-16">
+                            <div
+                                class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl lg:h-12 lg:w-12"
+                                :class="catTint(i).bg"
+                            >
                                 <img
                                     v-if="cat.image_url"
                                     :src="cat.image_url"
                                     :alt="cat.name"
-                                    class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                    class="h-full w-full rounded-xl object-cover transition-transform duration-300 group-hover:scale-110"
                                     loading="lazy"
                                 />
-                                <div v-else class="flex h-full items-center justify-center">
-                                    <span class="material-symbols-outlined text-xl text-outline-variant dark:text-[#3a302e]" aria-hidden="true">category</span>
-                                </div>
+                                <span v-else class="material-symbols-outlined text-xl" :class="catTint(i).text" aria-hidden="true">category</span>
                             </div>
-                            <span class="text-[11px] font-semibold text-center text-charcoal dark:text-[#f9eeed] group-hover:text-primary dark:group-hover:text-[#f6b7b2] transition-colors leading-tight">{{ cat.name }}</span>
+                            <span
+                                class="min-w-0 truncate text-[13px] font-semibold leading-tight transition-colors"
+                                :class="catTint(i).text"
+                            >{{ cat.name }}</span>
                         </Link>
                     </div>
                     <Link
                         :href="route('categories.index')"
-                        class="mt-4 flex w-full items-center justify-center gap-1 rounded-lg border border-surface-container-high py-2 text-sm font-medium text-on-surface-variant transition hover:bg-surface-container-low dark:border-[#3a302e] dark:text-[#cbb8b6] dark:hover:bg-[#2e2523]"
+                        class="mt-4 flex w-full items-center justify-center gap-1 rounded-xl bg-gradient-to-r from-[#e3ecff] via-[#eae5ff] to-[#ffe7f0] py-2.5 text-sm font-semibold text-charcoal transition hover:brightness-97 dark:border dark:border-[#3a302e] dark:bg-none dark:text-[#cbb8b6] dark:hover:bg-[#2e2523]"
                         @click="catMegaOpen = false"
                     >
                         View All Categories
                         <span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
                     </Link>
+                </div>
             </div>
         </Transition>
 

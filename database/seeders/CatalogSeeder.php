@@ -98,7 +98,6 @@ class CatalogSeeder extends Seeder
             $name = $data['name'];
             $slug = $this->cleanSlug($name);
 
-
             $product = Product::create([
                 'category_id' => $categoryId,
                 'title' => $name,

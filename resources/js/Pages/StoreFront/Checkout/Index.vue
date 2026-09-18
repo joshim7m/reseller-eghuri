@@ -1,8 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
-import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
+import { ref, computed } from 'vue'
 import { useCart } from '@/composables/useCart'
+import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 
 const props = defineProps({
     user: { type: Object, default: () => ({ name: '', mobile: '', shipping_address: '' }) },
@@ -35,29 +35,42 @@ const MOBILE_REGEX = /^(013|014|015|016|017|018|019)\d{8}$/
 function validate() {
     const errs = {}
 
-    if (!form.name || form.name.length < 3) errs.name = 'Name must be at least 3 characters'
-    else if (form.name.length > 30) errs.name = 'Name must not exceed 30 characters'
+    if (!form.name || form.name.length < 3) {
+errs.name = 'Name must be at least 3 characters'
+} else if (form.name.length > 30) {
+errs.name = 'Name must not exceed 30 characters'
+}
 
-    if (!form.mobile) errs.mobile = 'Mobile number is required'
-    else if (!MOBILE_REGEX.test(form.mobile)) errs.mobile = 'Enter a valid Bangladeshi mobile number (e.g. 017xxxxxxxx)'
+    if (!form.mobile) {
+errs.mobile = 'Mobile number is required'
+} else if (!MOBILE_REGEX.test(form.mobile)) {
+errs.mobile = 'Enter a valid Bangladeshi mobile number (e.g. 017xxxxxxxx)'
+}
 
-    if (!form.shipping_address || form.shipping_address.length < 12) errs.shipping_address = 'Address must be at least 12 characters'
-    else if (form.shipping_address.length > 60) errs.shipping_address = 'Address must not exceed 60 characters'
+    if (!form.shipping_address || form.shipping_address.length < 12) {
+errs.shipping_address = 'Address must be at least 12 characters'
+} else if (form.shipping_address.length > 60) {
+errs.shipping_address = 'Address must not exceed 60 characters'
+}
 
-    if (!form.shipping_area) errs.shipping_area = 'Select a shipping area'
+    if (!form.shipping_area) {
+errs.shipping_area = 'Select a shipping area'
+}
 
     errors.value = errs
+
     return Object.keys(errs).length === 0
 }
 
 function submitOrder() {
-    if (!validate()) return
+    if (!validate()) {
+return
+}
 
     form.items = cart.value.map(item => ({
         product_id: item.product_id,
         variant_id: item.variant_id || null,
-        size: item.size || null,
-        color: item.color || null,
+        options: item.options || null,
         item_name: item.name,
         quantity: item.qty,
         price: item.price,

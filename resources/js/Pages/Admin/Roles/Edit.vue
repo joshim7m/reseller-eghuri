@@ -1,6 +1,6 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 const { role, modules } = defineProps({
     role: { type: Object, required: true },
@@ -19,6 +19,7 @@ function submit() {
 
 function togglePermission(permissionId) {
     const idx = form.permissions.indexOf(permissionId)
+
     if (idx === -1) {
         form.permissions.push(permissionId)
     } else {
@@ -37,7 +38,10 @@ function selectAll(permissions) {
 function deselectAll(permissions) {
     permissions.forEach(p => {
         const idx = form.permissions.indexOf(p.id)
-        if (idx !== -1) form.permissions.splice(idx, 1)
+
+        if (idx !== -1) {
+form.permissions.splice(idx, 1)
+}
     })
 }
 

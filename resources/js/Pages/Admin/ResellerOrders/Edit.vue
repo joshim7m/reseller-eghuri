@@ -1,8 +1,8 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
-import InputError from '@/Components/InputError.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
+import InputError from '@/Components/InputError.vue'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 const props = defineProps({
     resellerOrder: { type: Object, required: true },
@@ -27,6 +27,7 @@ const form = useForm({
 const subtotal = computed(() => {
     return props.resellerOrder.items.reduce((sum, item) => {
         const qty = form.items.find(i => i.id === item.id)?.quantity ?? item.quantity
+
         return sum + (item.sale_price ?? item.unit_price) * qty
     }, 0)
 })
@@ -49,6 +50,7 @@ function statusColor(status) {
         completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
         cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
     }
+
     return map[status] || 'bg-gray-100 text-gray-800'
 }
 </script>
@@ -94,10 +96,8 @@ function statusColor(status) {
                         <div class="flex-1 min-w-0">
                             <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ item.product_name }}</p>
                             <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                <span v-if="item.size || item.color" class="text-[11px] text-gray-500 dark:text-gray-400">
-                                    <template v-if="item.size">{{ item.size }}</template>
-                                    <template v-if="item.size && item.color"> / </template>
-                                    <template v-if="item.color">{{ item.color }}</template>
+                                <span v-if="item.options?.length" class="text-[11px] text-gray-500 dark:text-gray-400">
+                                    {{ item.options.map(o => o.value).join(' / ') }}
                                 </span>
                                 <span v-if="item.variant?.sku" class="text-[10px] text-gray-400 dark:text-gray-500 font-mono">{{ item.variant.sku }}</span>
                             </div>

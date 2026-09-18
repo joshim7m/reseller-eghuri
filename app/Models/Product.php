@@ -24,6 +24,9 @@ class Product extends Model
         'quantity',
         'status',
         'featured',
+        'meta_title',
+        'meta_description',
+        'youtube_url',
     ];
 
     protected function casts(): array
@@ -63,7 +66,7 @@ class Product extends Model
     /** @return HasMany<ProductVariant, $this> */
     public function variants(): HasMany
     {
-        return $this->hasMany(ProductVariant::class);
+        return $this->hasMany(ProductVariant::class)->orderBy('id');
     }
 
     public function getImageUrlAttribute(): ?string

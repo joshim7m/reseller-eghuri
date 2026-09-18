@@ -1,6 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useWishlist } from '@/composables/useWishlist';
 
 const page = usePage();
@@ -30,14 +30,27 @@ function toggle(section) {
 }
 
 const mql = typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)') : null;
-function checkDesktop() { isDesktop.value = mql ? mql.matches : false; }
+function checkDesktop() {
+ isDesktop.value = mql ? mql.matches : false; 
+}
 
-onMounted(() => { checkDesktop(); if (mql) mql.addEventListener('change', checkDesktop); });
-onUnmounted(() => { if (mql) mql.removeEventListener('change', checkDesktop); });
+onMounted(() => {
+ checkDesktop();
+
+ if (mql) {
+mql.addEventListener('change', checkDesktop);
+} 
+});
+onUnmounted(() => {
+ if (mql) {
+mql.removeEventListener('change', checkDesktop);
+} 
+});
 </script>
 
 <template>
-    <footer class="bg-surface-container dark:bg-[#241d1c] border-t border-surface-container-high dark:border-[#3a302e]">
+    <div class="dark">
+    <footer class="bg-[#19283d] border-t border-white/10">
         <div class="mx-auto max-w-7xl px-4 py-16 md:px-6">
             <div class="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-12 lg:gap-8">
                 <div class="lg:col-span-4">
@@ -118,7 +131,7 @@ onUnmounted(() => { if (mql) mql.removeEventListener('change', checkDesktop); })
             </div>
         </div>
 
-        <div class="border-t border-surface-container-high dark:border-[#3a302e]">
+        <div class="border-t border-white/10">
             <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 py-5 sm:flex-row md:px-6">
                 <p class="text-xs text-outline dark:text-[#cbb8b6]">&copy; {{ year }} {{ companyName }}. All rights reserved.</p>
                 <div class="flex items-center gap-4 text-xs text-outline dark:text-[#cbb8b6]">
@@ -157,4 +170,5 @@ onUnmounted(() => { if (mql) mql.removeEventListener('change', checkDesktop); })
     </nav>
 
     <div class="h-16 md:hidden"></div>
+    </div>
 </template>

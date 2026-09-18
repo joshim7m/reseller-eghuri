@@ -1,8 +1,8 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
-import { ref } from 'vue'
 import { usePage } from '@inertiajs/vue3'
+import { ref } from 'vue'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 defineProps({
     orders: { type: Array, required: true },
@@ -16,11 +16,13 @@ function onSearch() {
     clearTimeout(timeout)
     timeout = setTimeout(() => {
         const params = new URLSearchParams(window.location.search)
+
         if (search.value) {
             params.set('search', search.value)
         } else {
             params.delete('search')
         }
+
         router.get(route('admin.reseller-orders.index') + '?' + params.toString(), {}, { preserveScroll: true, preserveState: true })
     }, 400)
 }
@@ -35,8 +37,15 @@ function dateLabel(date) {
     const yesterday = new Date()
     yesterday.setDate(today.getDate() - 1)
     const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-    if (sameDay(d, today)) return 'Today'
-    if (sameDay(d, yesterday)) return 'Yesterday'
+
+    if (sameDay(d, today)) {
+return 'Today'
+}
+
+    if (sameDay(d, yesterday)) {
+return 'Yesterday'
+}
+
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 </script>

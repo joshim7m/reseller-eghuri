@@ -1,8 +1,8 @@
 <script setup>
+import { Link } from '@inertiajs/vue3'
 import { ref, onMounted } from 'vue'
 import Dropdown from '@/Components/Dropdown.vue'
 import DropdownLink from '@/Components/DropdownLink.vue'
-import { Link } from '@inertiajs/vue3'
 
 defineEmits(['toggle-sidebar'])
 

@@ -1,7 +1,7 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 const { category, categories } = defineProps({
     category: { type: Object, required: true },
@@ -19,6 +19,8 @@ const form = useForm({
     description: category.description || '',
     image_path: null,
     is_active: category.is_active,
+    meta_title: category.meta_title || '',
+    meta_description: category.meta_description || '',
 })
 
 const hasNewImage = ref(false)
@@ -64,7 +66,10 @@ function onFileSelect(e) {
 }
 
 function handleFile(file) {
-    if (!file || !file.type.startsWith('image/')) return
+    if (!file || !file.type.startsWith('image/')) {
+return
+}
+
     form.image_path = file
 
     const reader = new FileReader()
@@ -138,6 +143,22 @@ function openFilePicker() {
                         <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                         <textarea id="description" v-model="form.description" rows="4" class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
                         <p v-if="form.errors.description" class="mt-1 text-sm text-red-600">{{ form.errors.description }}</p>
+                    </div>
+
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-4">
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">SEO</h3>
+                        <div>
+                            <label for="meta_title" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta Title</label>
+                            <input id="meta_title" v-model="form.meta_title" type="text" class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Leave blank to use category name + pattern" />
+                            <p class="mt-1 text-xs text-gray-400">Overrides the global category title pattern.</p>
+                            <p v-if="form.errors.meta_title" class="mt-1 text-sm text-red-600">{{ form.errors.meta_title }}</p>
+                        </div>
+                        <div>
+                            <label for="meta_description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meta Description</label>
+                            <textarea id="meta_description" v-model="form.meta_description" rows="2" class="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Leave blank to use default pattern"></textarea>
+                            <p class="mt-1 text-xs text-gray-400">140-160 chars recommended.</p>
+                            <p v-if="form.errors.meta_description" class="mt-1 text-sm text-red-600">{{ form.errors.meta_description }}</p>
+                        </div>
                     </div>
 
                     <div>

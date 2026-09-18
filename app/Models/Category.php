@@ -22,6 +22,8 @@ class Category extends Model
         'image_path',
         'description',
         'is_active',
+        'meta_title',
+        'meta_description',
     ];
 
     protected static function booted(): void

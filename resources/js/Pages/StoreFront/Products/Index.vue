@@ -1,9 +1,9 @@
 <script setup>
+import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
-import { Head, Link, router } from '@inertiajs/vue3'
-import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 import FilterSidebar from '@/Components/StoreFront/FilterSidebar.vue'
 import HomeProductCard from '@/Components/StoreFront/HomeProductCard.vue'
+import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 
 const props = defineProps({
     products: { type: Object, default: () => ({ data: [] }) },
@@ -20,13 +20,13 @@ function changeSort(event) {
 }
 
 function goToPage(url) {
-    if (url) router.get(url, {}, { preserveScroll: true, preserveState: true })
+    if (url) {
+router.get(url, {}, { preserveScroll: true, preserveState: true })
+}
 }
 </script>
 
 <template>
-    <Head title="Products" />
-
     <FrontEndMaster>
         <div v-if="urlParams.get('q')" class="mb-4 text-sm text-on-surface-variant dark:text-[#cbb8b6]">
             Results for: "<span class="font-medium text-charcoal dark:text-[#f9eeed]">{{ urlParams.get('q') }}</span>"

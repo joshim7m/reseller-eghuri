@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Models\ResellerOrder;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Models\Wallet;
+use App\Notifications\WithdrawalStatusChanged;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class WalletService
@@ -57,6 +60,107 @@ class WalletService
             $wallet->increment('balance', $transaction->amount);
             $wallet->increment('credit', $transaction->amount);
         });
+    }
+
+    public function withdrawalAvailableAt(User $user): ?Carbon
+    {
+        $lastWithdrawal = Transaction::where('user_id', $user->id)
+            ->where('transaction_name', 'Withdrawal')
+            ->latest()
+            ->first();
+
+        if ($lastWithdrawal && $lastWithdrawal->created_at?->isAfter(now()->subDay())) {
+            return $lastWithdrawal->created_at->addDay();
+        }
+
+        return null;
+    }
+
+    public function requestWithdrawal(User $user, float $amount, string $paymentMethod, string $accountNumber): Transaction
+    {
+        $availableAt = $this->withdrawalAvailableAt($user);
+
+        if ($availableAt) {
+            $minutes = (int) ceil(now()->diffInMinutes($availableAt));
+
+            abort(422, sprintf(
+                'You can request one withdrawal every 24 hours. Your next withdrawal will be available in %d minute(s).',
+                max($minutes, 1),
+            ));
+        }
+
+        return DB::transaction(function () use ($user, $amount, $paymentMethod, $accountNumber) {
+            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
+
+            if (! $wallet || $wallet->balance < $amount) {
+                abort(422, 'Insufficient wallet balance.');
+            }
+
+            $transaction = Transaction::create([
+                'user_id' => $user->id,
+                'paymentmethod_name' => $paymentMethod,
+                'transaction_name' => 'Withdrawal',
+                'amount' => $amount,
+                'type' => 'debit',
+                'status' => 'pending',
+                'note' => "Withdraw to {$paymentMethod} {$accountNumber}",
+            ]);
+
+            $wallet->update(['transaction_id' => $transaction->id]);
+            $wallet->decrement('balance', $amount);
+
+            return $transaction;
+        });
+    }
+
+    public function acceptWithdrawal(Transaction $transaction): void
+    {
+        if ($transaction->transaction_name !== 'Withdrawal' || $transaction->status !== 'pending') {
+            return;
+        }
+
+        DB::transaction(function () use ($transaction) {
+            $transaction->update([
+                'status' => 'completed',
+                'action_by' => auth()->user()->name ?? null,
+            ]);
+
+            $wallet = Wallet::where('user_id', $transaction->user_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($wallet) {
+                $wallet->update(['transaction_id' => $transaction->id]);
+                $wallet->increment('debit', $transaction->amount);
+            }
+        });
+
+        $transaction->user?->notify(new WithdrawalStatusChanged($transaction, 'accepted'));
+    }
+
+    public function rejectWithdrawal(Transaction $transaction): void
+    {
+        if ($transaction->transaction_name !== 'Withdrawal' || $transaction->status !== 'pending') {
+            return;
+        }
+
+        DB::transaction(function () use ($transaction) {
+            $transaction->update([
+                'status' => 'cancelled',
+                'action_by' => auth()->user()->name ?? null,
+            ]);
+
+            $wallet = Wallet::where('user_id', $transaction->user_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($wallet) {
+                $wallet->update(['transaction_id' => $transaction->id]);
+                $wallet->increment('balance', $transaction->amount);
+            }
+        });
+
+        $transaction->user?->notify(new WithdrawalStatusChanged($transaction, 'rejected'));
     }
 
     public function cancelTransaction(ResellerOrder $order): void

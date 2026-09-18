@@ -3,15 +3,21 @@
 use App\Models\Module;
 use App\Models\Permission;
 use App\Models\Product;
+use App\Models\ProductImage;
 use App\Models\ProductVariant;
 use App\Models\ResellerOrder;
 use App\Models\ResellerOrderItem;
 use App\Models\Role;
+use App\Models\Setting;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Services\WalletService;
+use Database\Seeders\ResellerOrderSeeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
 
 function resellerTestUser(): User
 {
@@ -66,8 +72,6 @@ function resellerOrderPayload(): array
                 'unit_price' => 100,
                 'sale_price' => 150,
                 'variant_id' => null,
-                'size' => null,
-                'color' => null,
             ],
         ],
         'customer_name' => 'John Doe',
@@ -111,6 +115,77 @@ it('shows the reseller their orders with wallet summary', function () {
         );
 });
 
+it('shows order details with the variant image and without the wallet transaction', function () {
+    $reseller = resellerTestUser();
+    $product = Product::create([
+        'title' => 'Variant Product',
+        'slug' => 'variant-product-'.uniqid(),
+        'unit_price' => 100,
+        'sale_price' => 150,
+        'quantity' => 50,
+        'status' => 'active',
+    ]);
+    $image = ProductImage::create([
+        'product_id' => $product->id,
+        'image_path' => '/storage/images/variant.jpg',
+        'sort_order' => 1,
+    ]);
+    $variant = ProductVariant::create([
+        'product_id' => $product->id,
+        'product_image_id' => $image->id,
+        'sku' => 'VAR-001',
+        'unit_price' => 100,
+        'sale_price' => 150,
+        'quantity' => 10,
+        'options' => [['name' => 'Color', 'value' => 'Red']],
+    ]);
+
+    $order = ResellerOrder::factory()
+        ->for($reseller)
+        ->has(ResellerOrderItem::factory([
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'unit_price' => 100,
+            'sale_price' => 150,
+        ]), 'items')
+        ->create();
+
+    app(WalletService::class)->createPendingTransaction($order);
+
+    $this->actingAs($reseller)
+        ->get(route('reseller-orders.show', $order))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('StoreFront/ResellerOrders/Show')
+            ->has('resellerOrder.items', 1)
+            ->where('resellerOrder.items.0.variant.image.image_path', '/storage/images/variant.jpg')
+            ->where('resellerOrder.items.0.variant.image.image_url', 'http://localhost/storage/images/variant.jpg')
+            ->missing('resellerOrder.transaction')
+        );
+});
+
+it('forbids a reseller from viewing another reseller order', function () {
+    $owner = resellerTestUser();
+    $other = User::create([
+        'name' => 'Other Reseller',
+        'email' => 'other@test.dev',
+        'password' => Hash::make('password'),
+        'role_id' => $owner->role_id,
+        'user_type' => 'reseller',
+        'status' => true,
+        'email_verified_at' => now(),
+    ]);
+
+    $order = ResellerOrder::factory()
+        ->for($owner)
+        ->has(ResellerOrderItem::factory(), 'items')
+        ->create();
+
+    $this->actingAs($other)
+        ->get(route('reseller-orders.show', $order))
+        ->assertForbidden();
+});
+
 it('stores a reseller order with items and a pending wallet transaction', function () {
     $reseller = resellerTestUser();
 
@@ -136,14 +211,73 @@ it('stores a reseller order with items and a pending wallet transaction', functi
         ->and((float) $transaction->amount)->toBe(100.0);
 });
 
-it('rejects sale prices below the unit price', function () {
+it('accepts sale prices below the unit price', function () {
     $reseller = resellerTestUser();
     $payload = resellerOrderPayload();
     $payload['items'][0]['sale_price'] = 99;
 
     $this->actingAs($reseller)
         ->post(route('reseller-orders.store'), $payload)
-        ->assertSessionHasErrors('items.0.sale_price');
+        ->assertRedirect(route('reseller-orders.index'))
+        ->assertSessionHas('success');
+
+    $order = ResellerOrder::first();
+
+    expect($order)->not->toBeNull()
+        ->and((float) $order->items()->first()->sale_price)->toBe(99.0)
+        ->and((float) $order->items()->first()->unit_price)->toBe(100.0);
+});
+
+it('saves delivery areas as json from the admin site config', function () {
+    $admin = adminTestUser();
+
+    $this->actingAs($admin)
+        ->post(route('admin.settings.update'), [
+            'delivery_areas' => [
+                ['name' => 'Inside Dhaka', 'charge' => 60],
+                ['name' => 'Outside Dhaka', 'charge' => 120],
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    $areas = json_decode(Setting::get('delivery_areas'), true);
+
+    expect($areas)->toBe([
+        ['name' => 'Inside Dhaka', 'charge' => 60],
+        ['name' => 'Outside Dhaka', 'charge' => 120],
+    ]);
+});
+
+it('accepts a delivery charge from the configured delivery areas', function () {
+    $reseller = resellerTestUser();
+
+    Setting::set('delivery_areas', json_encode([
+        ['name' => 'Inside Dhaka', 'charge' => 60],
+        ['name' => 'Outside Dhaka', 'charge' => 150],
+    ]));
+
+    $payload = resellerOrderPayload();
+    $payload['delivery_charge'] = 60;
+
+    $this->actingAs($reseller)
+        ->post(route('reseller-orders.store'), $payload)
+        ->assertRedirect(route('reseller-orders.index'))
+        ->assertSessionHas('success');
+
+    expect((float) ResellerOrder::first()->delivery_charge)->toBe(60.0);
+});
+
+it('rejects a delivery charge that is not configured', function () {
+    $reseller = resellerTestUser();
+
+    Setting::set('delivery_areas', json_encode([
+        ['name' => 'Inside Dhaka', 'charge' => 60],
+    ]));
+
+    $this->actingAs($reseller)
+        ->post(route('reseller-orders.store'), resellerOrderPayload())
+        ->assertSessionHasErrors('delivery_charge');
 
     expect(ResellerOrder::count())->toBe(0);
 });
@@ -194,7 +328,7 @@ it('shows the per-user day view for admins and 404s when empty', function () {
         ->assertNotFound();
 });
 
-it('completes the wallet transaction when the order becomes completed and paid', function () {
+it('completes the wallet transaction when the order status is set to completed', function () {
     $admin = adminTestUser();
     $reseller = resellerTestUser();
 
@@ -209,15 +343,11 @@ it('completes the wallet transaction when the order becomes completed and paid',
         ->patch(route('admin.reseller-orders.update-status', $order), ['status' => 'completed'])
         ->assertRedirect();
 
-    expect(Transaction::where('reseller_order_id', $order->id)->value('status'))->toBe('pending');
-
-    $this->actingAs($admin)
-        ->patch(route('admin.reseller-orders.update-payment-status', $order), ['payment_status' => 'paid'])
-        ->assertRedirect();
-
+    $order->refresh();
     $wallet = Wallet::where('user_id', $reseller->id)->first();
 
-    expect(Transaction::where('reseller_order_id', $order->id)->value('status'))->toBe('completed')
+    expect($order->payment_status)->toBe('paid')
+        ->and(Transaction::where('reseller_order_id', $order->id)->value('status'))->toBe('completed')
         ->and($wallet)->not->toBeNull()
         ->and((float) $wallet->balance)->toBe(100.0)
         ->and((float) $wallet->credit)->toBe(100.0);
@@ -313,7 +443,7 @@ it('returns matching active products with purchase price and variants', function
         'quantity' => 10,
         'status' => 'active',
     ]);
-    ProductVariant::create(['product_id' => $product->id, 'size' => 'L', 'color' => 'White', 'quantity' => 5]);
+    ProductVariant::create(['product_id' => $product->id, 'unit_price' => 750, 'sale_price' => 1190, 'options' => [['name' => 'size', 'value' => 'L'], ['name' => 'color', 'value' => 'White']], 'quantity' => 5]);
 
     Product::create([
         'title' => 'Cotton Panjabi Old',
@@ -333,9 +463,13 @@ it('returns matching active products with purchase price and variants', function
         ->and((float) $response->json('0.purchase_price'))->toBe(800.0)
         ->and((float) $response->json('0.sale_price'))->toBe(1200.0)
         ->and($response->json('0.variants'))->toHaveCount(1)
-        ->and($response->json('0.variants.0.size'))->toBe('L')
-        ->and($response->json('0.variants.0.color'))->toBe('White')
-        ->and($response->json('0.variants.0.quantity'))->toBe(5);
+        ->and($response->json('0.variants.0.options'))->toBe([
+            ['name' => 'size', 'value' => 'L'],
+            ['name' => 'color', 'value' => 'White'],
+        ])
+        ->and($response->json('0.variants.0.quantity'))->toBe(5)
+        ->and($response->json('0.variants.0.unit_price'))->toBe(750)
+        ->and($response->json('0.variants.0.sale_price'))->toBe(1190);
 });
 
 it('returns an empty array for short search queries', function () {
@@ -361,7 +495,7 @@ it('returns an empty array for short search queries', function () {
         ->assertJson([]);
 });
 
-it('matches product titles only, not skus', function () {
+it('matches products by sku at the product level', function () {
     $reseller = resellerTestUser();
 
     Product::create([
@@ -374,8 +508,183 @@ it('matches product titles only, not skus', function () {
         'status' => 'active',
     ]);
 
-    $this->actingAs($reseller)
+    $response = $this->actingAs($reseller)
         ->getJson(route('reseller-orders.search-products', ['q' => 'XYZ']))
         ->assertOk()
-        ->assertJson([]);
+        ->assertJsonCount(1);
+
+    expect($response->json('0.title'))->toBe('Winter Jacket')
+        ->and($response->json('0.sku'))->toBe('XYZ-999');
+});
+
+it('matches products by variant sku', function () {
+    $reseller = resellerTestUser();
+
+    $product = Product::create([
+        'title' => 'Denim Shirt',
+        'slug' => 'denim-shirt-'.uniqid(),
+        'unit_price' => 400,
+        'sale_price' => 700,
+        'quantity' => 10,
+        'status' => 'active',
+    ]);
+    ProductVariant::create(['product_id' => $product->id, 'sku' => 'SHRT-111', 'options' => [['name' => 'size', 'value' => 'M']], 'quantity' => 4]);
+
+    $response = $this->actingAs($reseller)
+        ->getJson(route('reseller-orders.search-products', ['q' => 'SHRT']))
+        ->assertOk()
+        ->assertJsonCount(1);
+
+    expect($response->json('0.title'))->toBe('Denim Shirt')
+        ->and($response->json('0.variants.0.sku'))->toBe('SHRT-111');
+});
+
+it('renders the reseller sales report scoped to the date range', function () {
+    $admin = adminTestUser();
+    $reseller = resellerTestUser();
+
+    ResellerOrder::factory()
+        ->for($reseller)
+        ->has(ResellerOrderItem::factory(['unit_price' => 100, 'sale_price' => 150, 'quantity' => 2]), 'items')
+        ->create(['created_at' => now()->subDays(2)]);
+
+    ResellerOrder::factory()
+        ->for($reseller)
+        ->has(ResellerOrderItem::factory(), 'items')
+        ->create(['created_at' => now()->subDays(60)]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.reseller-orders.report', [
+            'from' => now()->subDays(7)->toDateString(),
+            'to' => now()->toDateString(),
+        ]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Admin/ResellerOrders/Report')
+            ->has('orders', 1)
+            ->where('orders.0.status', 'pending')
+            ->where('orders.0.quantity', 2)
+            ->where('orders.0.items.0.quantity', 2)
+        );
+});
+
+it('downloads an xlsx courier report with text-formatted phones and skipped statuses', function () {
+    $admin = adminTestUser();
+    $reseller = resellerTestUser();
+
+    Setting::set('company_name', 'Acme Fashion');
+    Setting::set('company_mobile', '01715009988');
+
+    ResellerOrder::factory()
+        ->for($reseller)
+        ->has(ResellerOrderItem::factory(['product_name' => 'Padded Bra', 'unit_price' => 100, 'sale_price' => 150, 'quantity' => 2, 'options' => [['name' => 'color', 'value' => 'White']]]), 'items')
+        ->create([
+            'order_number' => 'RSL-000001',
+            'customer_name' => 'Nasrin Akter',
+            'mobile' => '01945090085',
+            'shipping_address' => '7/d, Sector-7 Uttara Dhaka',
+            'delivery_charge' => 50,
+            'created_at' => now()->subDays(2),
+        ]);
+
+    ResellerOrder::factory()
+        ->cancelled()
+        ->for($reseller)
+        ->has(ResellerOrderItem::factory(), 'items')
+        ->create(['created_at' => now()->subDays(1)]);
+
+    ResellerOrder::factory()
+        ->for($reseller)
+        ->has(ResellerOrderItem::factory(), 'items')
+        ->create(['order_number' => 'RSL-000002', 'created_at' => now()->subDays(60)]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.reseller-orders.export-report', [
+            'from' => now()->subDays(7)->toDateString(),
+            'to' => now()->toDateString(),
+        ]))
+        ->assertOk()
+        ->assertDownload('courier-report-'.now()->format('Y-m-d').'.xlsx');
+
+    $file = tempnam(sys_get_temp_dir(), 'reseller_report');
+
+    file_put_contents($file, $response->streamedContent());
+
+    try {
+        $sheet = (new Xlsx)->load($file)->getActiveSheet();
+
+        expect($sheet->getCell('A1')->getValue())->toBe('Invoice')
+            ->and($sheet->getCell('I1')->getValue())->toBe('Contact Number')
+            ->and($sheet->getCell('A2')->getValue())->toBe('Padded Bra White')
+            ->and($sheet->getCell('B2')->getValue())->toBe('Nasrin Akter')
+            ->and($sheet->getCell('C2')->getValue())->toBe('7/d, Sector-7 Uttara Dhaka')
+            ->and($sheet->getCell('D2')->getValue())->toBe('01945090085')
+            ->and($sheet->getCell('D2')->getDataType())->toBe(DataType::TYPE_STRING)
+            ->and($sheet->getCell('E2')->getValue())->toBe(350.0)
+            ->and($sheet->getCell('F2')->getValue())->toBe('null')
+            ->and($sheet->getCell('G2')->getValue())->toBeNull()
+            ->and($sheet->getCell('H2')->getValue())->toBe('Acme Fashion')
+            ->and($sheet->getCell('I2')->getValue())->toBe('01715009988')
+            ->and($sheet->getHighestRow())->toBe(2);
+    } finally {
+        @unlink($file);
+    }
+});
+
+it('exports only the selected order ids', function () {
+    $admin = adminTestUser();
+    $reseller = resellerTestUser();
+
+    $keep = ResellerOrder::factory()
+        ->for($reseller)
+        ->has(ResellerOrderItem::factory(), 'items')
+        ->create(['created_at' => now()->subDays(2)]);
+
+    ResellerOrder::factory()
+        ->for($reseller)
+        ->has(ResellerOrderItem::factory(), 'items')
+        ->create(['created_at' => now()->subDays(1)]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('admin.reseller-orders.export-report', [
+            'from' => now()->subDays(7)->toDateString(),
+            'to' => now()->toDateString(),
+            'ids' => [$keep->id],
+        ]))
+        ->assertOk();
+
+    $file = tempnam(sys_get_temp_dir(), 'reseller_report');
+
+    file_put_contents($file, $response->streamedContent());
+
+    try {
+        $sheet = (new Xlsx)->load($file)->getActiveSheet();
+
+        expect($sheet->getHighestRow())->toBe(2)
+            ->and($sheet->getCell('B2')->getValue())->toBe($keep->customer_name);
+    } finally {
+        @unlink($file);
+    }
+});
+
+it('seeds orders with the cumulative date distribution', function () {
+    $role = Role::firstOrCreate(['slug' => 'reseller'], ['name' => 'Reseller']);
+    User::create([
+        'name' => 'Seeder Reseller',
+        'email' => 'seeder@test.dev',
+        'password' => Hash::make('password'),
+        'role_id' => $role->id,
+        'user_type' => 'reseller',
+        'status' => true,
+        'email_verified_at' => now(),
+    ]);
+
+    $this->seed(ResellerOrderSeeder::class);
+
+    $now = now();
+
+    expect(ResellerOrder::count())->toBe(22);
+    expect(ResellerOrder::where('created_at', '>=', $now->copy()->startOfDay())->count())->toBe(5);
+    expect(ResellerOrder::where('created_at', '>=', $now->copy()->startOfWeek(Carbon::SUNDAY))->count())->toBe(12);
+    expect(ResellerOrder::where('created_at', '>=', $now->copy()->startOfMonth())->count())->toBe(22);
 });

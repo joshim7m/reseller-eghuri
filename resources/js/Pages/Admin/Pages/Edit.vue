@@ -1,7 +1,7 @@
 <script setup>
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import RichTextEditor from '@/Components/Admin/RichTextEditor.vue';
 import AdminMaster from '@/Layouts/Admin/AdminMaster.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const { page } = defineProps({
     page: { type: Object, required: true },
@@ -27,6 +27,7 @@ function submit() {
     if (!form.slug) {
         form.slug = slugify(form.title);
     }
+
     form.put(route('admin.pages.update', page.id));
 }
 </script>

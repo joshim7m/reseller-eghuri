@@ -1,5 +1,5 @@
 <script setup>
-import { Head, Link } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 
@@ -9,14 +9,16 @@ const props = defineProps({
 
 const randomCategory = computed(() => {
     const withImage = props.categories.filter(c => c.image_url)
-    if (!withImage.length) return null
+
+    if (!withImage.length) {
+return null
+}
+
     return withImage[Math.floor(Math.random() * withImage.length)]
 })
 </script>
 
 <template>
-    <Head title="Categories" />
-
     <FrontEndMaster>
         <section class="mb-12 border-b border-outline-variant dark:border-[#3a302e]">
             <div class="relative w-full h-[300px] md:h-[400px] overflow-hidden rounded-xl mb-8 bg-gradient-to-br from-primary-container/40 via-surface to-surface-variant dark:from-[#4a2e2c]/40 dark:via-[#241d1c] dark:to-[#2e2523]">

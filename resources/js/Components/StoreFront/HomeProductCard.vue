@@ -1,6 +1,7 @@
 <script setup>
 import { Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { variantOptions, isColorDimension as isColorName } from '@/composables/useVariantOptions';
 import { useWishlist } from '@/composables/useWishlist';
 
 const props = defineProps({
@@ -22,20 +23,11 @@ const productUrl = computed(() =>
 );
 
 const salePrice = computed(() =>
-    Number(props.product.sale_price || props.product.unit_price || 0),
+    Number(props.product.unit_price || props.product.sale_price || 0),
 );
 const originalPrice = computed(() =>
-    Number(props.product.unit_price || props.product.original_price || 0),
+    Number(props.product.sale_price || props.product.original_price || 0),
 );
-const hasDiscount = computed(
-    () => originalPrice.value > salePrice.value && originalPrice.value > 0,
-);
-const discountPct = computed(() =>
-    hasDiscount.value
-        ? Math.round((1 - salePrice.value / originalPrice.value) * 100)
-        : 0,
-);
-
 const stock = computed(() =>
     Number(props.product.total_stock ?? props.product.quantity ?? 0),
 );
@@ -59,19 +51,29 @@ const coverImage = computed(() => imageUrl(images.value[0]) || null);
 
 const wishlist = useWishlist()
 const isWished = computed(() => wishlist.has(props.product.id))
-function toggleWishlist() { wishlist.toggle(props.product.id) }
+function toggleWishlist() {
+ wishlist.toggle(props.product.id) 
+}
 
-const colors = computed(() => {
-    if (props.product.variants) {
-        return [
-            ...new Set(
-                props.product.variants.map((v) => v.color).filter(Boolean),
-            ),
-        ];
-    }
+const primaryDimName = computed(() => {
+    const v = props.product.variants?.[0];
 
-    return props.product.colors || [];
+    return v ? (variantOptions(v)[0]?.name || null) : null;
 });
+
+const primaryDimValues = computed(() => {
+    if (!props.product.variants || !primaryDimName.value) {
+return [];
+}
+
+    return [...new Set(
+        props.product.variants
+            .map((v) => variantOptions(v).find(o => o.name === primaryDimName.value)?.value)
+            .filter(Boolean),
+    )];
+});
+
+const isColorDimension = computed(() => isColorName(primaryDimName.value));
 
 const colorHex = (color) => {
     const map = {
@@ -138,30 +140,41 @@ const colorHex = (color) => {
                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"/>
                 </svg>
             </button>
+
+            <div
+                v-if="primaryDimValues.length"
+                class="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center gap-1.5 bg-white/90 px-2 py-2 backdrop-blur-sm transition-transform duration-300 translate-y-full group-hover:translate-y-0 dark:bg-[#171212]/90"
+            >
+                <div v-if="isColorDimension" class="flex items-center gap-1.5">
+                    <span
+                        v-for="val in primaryDimValues.slice(0, 6)"
+                        :key="val"
+                        class="inline-block h-4 w-4 rounded-full border border-outline-variant dark:border-[#3a302e]"
+                        :style="{
+                            backgroundColor: colorHex(val),
+                            backgroundImage: colorHex(val).startsWith('linear')
+                                ? colorHex(val)
+                                : 'none',
+                        }"
+                        :title="val"
+                    ></span>
+                </div>
+                <div v-else class="flex items-center gap-1 flex-wrap justify-center">
+                    <span
+                        v-for="val in primaryDimValues.slice(0, 6)"
+                        :key="val"
+                        class="inline-flex items-center px-1.5 py-0.5 rounded border border-orange-200 dark:border-gray-700 bg-orange-50 dark:bg-gray-800 text-[10px] font-semibold text-orange-700 dark:text-gray-300 capitalize"
+                    >{{ val }}</span>
+                </div>
+                <span
+                    v-if="primaryDimValues.length > 6"
+                    class="text-[10px] font-medium text-outline dark:text-[#cbb8b6]"
+                >+{{ primaryDimValues.length - 6 }}</span>
+            </div>
         </div>
 
         <!-- Meta -->
         <div class="flex flex-1 flex-col gap-2 p-3">
-            <!-- Color swatches -->
-            <div v-if="colors.length" class="flex items-center gap-1.5">
-                <span
-                    v-for="color in colors.slice(0, 5)"
-                    :key="color"
-                    class="inline-block h-5 w-5 rounded-full border border-outline-variant dark:border-[#3a302e]"
-                    :style="{
-                        backgroundColor: colorHex(color),
-                        backgroundImage: colorHex(color).startsWith('linear')
-                            ? colorHex(color)
-                            : 'none',
-                    }"
-                    :title="color"
-                ></span>
-                <span
-                    v-if="colors.length > 5"
-                    class="text-[10px] font-medium text-outline dark:text-[#cbb8b6]"
-                >+{{ colors.length - 5 }}</span>
-            </div>
-
             <!-- Title -->
             <h3 class="line-clamp-2 text-sm font-bold leading-snug text-charcoal dark:text-[#f9eeed]">
                 {{ product.title }}
@@ -174,7 +187,6 @@ const colorHex = (color) => {
                         ৳{{ salePrice.toLocaleString() }}
                     </span>
                     <span
-                        v-if="hasDiscount"
                         class="text-[11px] font-medium text-outline line-through"
                     >৳{{ originalPrice.toLocaleString() }}</span>
                 </div>

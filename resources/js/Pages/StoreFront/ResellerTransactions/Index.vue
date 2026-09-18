@@ -1,12 +1,13 @@
 <script setup>
-import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
+import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue'
 
 defineProps({
     wallet: { type: Object, default: null },
     transactions: { type: Object, required: true },
     pendingBalance: { type: Number, default: 0 },
     cancelledBalance: { type: Number, default: 0 },
+    pendingWithdrawalAmount: { type: Number, default: 0 },
 })
 
 function formatPrice(price) {
@@ -15,6 +16,7 @@ function formatPrice(price) {
 
 function formatDate(date) {
     const d = new Date(date)
+
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true })
 }
 
@@ -30,6 +32,7 @@ function statusColor(status) {
         pending: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
         cancelled: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400',
     }
+
     return map[status] || 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
 }
 
@@ -39,11 +42,14 @@ function statusDot(status) {
         pending: 'bg-amber-500',
         cancelled: 'bg-red-500',
     }
+
     return map[status] || 'bg-gray-400'
 }
 
 function goToPage(url) {
-    if (url) router.get(url, {}, { preserveScroll: true, preserveState: true })
+    if (url) {
+router.get(url, {}, { preserveScroll: true, preserveState: true })
+}
 }
 </script>
 
@@ -51,7 +57,12 @@ function goToPage(url) {
     <Head title="Reseller Transactions" />
 
     <FrontEndMaster>
-        <div class="max-w-5xl mx-auto">
+        <div class="max-w-5xl mx-auto min-h-[calc(100dvh-4rem)]">
+            <Link :href="route('reseller-orders.index')" class="inline-flex items-center gap-1.5 text-sm font-medium text-on-surface-variant transition hover:text-primary dark:text-[#cbb8b6] dark:hover:text-[#f6b7b2] mb-6">
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_back</span>
+                Back to Orders
+            </Link>
+
             <div class="flex items-center justify-between mb-8 flex-wrap gap-3">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-bold text-charcoal dark:text-[#f9eeed] mb-1">Transactions</h1>
@@ -63,11 +74,11 @@ function goToPage(url) {
                 </Link>
             </div>
 
-            <div v-if="wallet" class="bg-white dark:bg-[#1e1917] rounded-2xl border border-outline-variant dark:border-[#3a302e] p-5 md:p-6 mb-6">
+            <div class="bg-white dark:bg-[#1e1917] rounded-2xl border border-outline-variant dark:border-[#3a302e] p-5 md:p-6 mb-6">
                 <h2 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant dark:text-[#cbb8b6] mb-4">Wallet Summary</h2>
                 <div class="flex items-center gap-6 flex-wrap">
                     <div>
-                        <p class="font-mono text-2xl font-bold text-charcoal dark:text-[#f9eeed]">{{ formatPrice(wallet?.balance) }}</p>
+                        <p class="font-mono text-2xl font-bold text-charcoal dark:text-[#f9eeed]">{{ formatPrice(wallet?.balance ?? 0) }}</p>
                         <p class="text-xs text-on-surface-variant dark:text-[#cbb8b6] mt-0.5">Available Balance</p>
                     </div>
                     <div class="h-10 w-px bg-outline-variant dark:bg-[#3a302e]"></div>

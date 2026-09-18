@@ -1,30 +1,49 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
-import ConfirmDialog from '@/Components/ConfirmDialog.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import ConfirmDialog from '@/Components/ConfirmDialog.vue'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
-defineProps({
+const props = defineProps({
     products: { type: Object, required: true },
     categories: { type: Array, required: true },
 })
 
 const search = ref('')
 const categoryId = ref('')
+const statusFilter = ref('')
+const featuredFilter = ref('')
 const showDeleteDialog = ref(false)
 const deletingId = ref(null)
 const showCategoryDropdown = ref(false)
 const categoryDropdownRef = ref(null)
 
-const selectedCategoryName = computed(() => {
-    if (!categoryId.value) return 'All Categories'
-    for (const cat of categories) {
-        if (cat.id === categoryId.value) return cat.name
-        for (const child of (cat.children || [])) {
-            if (child.id === categoryId.value) return child.name
+const categoryOptions = computed(() => {
+    const options = []
+    const walk = (cats, depth) => {
+        for (const cat of cats) {
+            options.push({ id: cat.id, name: cat.name, depth })
+
+            if (cat.children?.length) {
+walk(cat.children, depth + 1)
+}
         }
     }
-    return 'All Categories'
+    walk(props.categories, 0)
+
+    return options
+})
+
+const selectedCategoryName = computed(() => {
+    if (!categoryId.value) {
+return 'All Categories'
+}
+
+    if (categoryId.value === 'none') {
+return 'No Category'
+}
+
+    return categoryOptions.value.find((option) => option.id === categoryId.value)?.name ?? 'All Categories'
 })
 
 function selectCategory(id) {
@@ -38,18 +57,31 @@ function handleClickOutside(e) {
     }
 }
 
-onMounted(() => document.addEventListener('click', handleClickOutside))
-onUnmounted(() => document.removeEventListener('click', handleClickOutside))
+onMounted(() => {
+    document.addEventListener('click', handleClickOutside)
+    document.addEventListener('click', handleToggleClickOutside)
+    document.addEventListener('keydown', handleToggleKeydown)
+})
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside)
+    document.removeEventListener('click', handleToggleClickOutside)
+    document.removeEventListener('keydown', handleToggleKeydown)
+})
 
 function truncate(text, len = 50) {
     return text?.length > len ? text.substring(0, len) + '...' : text
 }
 
 let debounceTimer
-watch([search, categoryId], () => {
+watch([search, categoryId, statusFilter, featuredFilter], () => {
     clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
-        router.get(route('admin.products.index'), { search: search.value, category_id: categoryId.value }, { preserveState: true, replace: true })
+        router.get(route('admin.products.index'), {
+            search: search.value,
+            category_id: categoryId.value,
+            status: statusFilter.value,
+            featured: featuredFilter.value,
+        }, { preserveState: true, replace: true })
     }, 300)
 })
 
@@ -67,13 +99,79 @@ function confirmDelete() {
     })
 }
 
-function formatPrice(price) {
-    return '৳' + price.toLocaleString('en-IN')
+const pendingToggle = ref(null)
+const togglingKey = ref('')
+const toggleConfirmRef = ref(null)
+
+const togglePopoverMessage = computed(() => {
+    if (!pendingToggle.value) {
+return ''
 }
 
-function statusBadge(status) {
-    const map = { active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' }
-    return map[status] || 'bg-gray-100 text-gray-800'
+    const { product, field, next } = pendingToggle.value
+    const title = truncate(product.title, 30)
+
+    if (field === 'status') {
+        return next === 'active'
+            ? `Activate "${title}"?`
+            : `Deactivate "${title}"?`
+    }
+
+    return next
+        ? `Feature "${title}"?`
+        : `Remove "${title}" from featured?`
+})
+
+function isPending(product, field) {
+    return pendingToggle.value?.product?.id === product.id && pendingToggle.value?.field === field
+}
+
+function handleToggleClickOutside(e) {
+    if (toggleConfirmRef.value && !toggleConfirmRef.value.contains(e.target)) {
+        pendingToggle.value = null
+    }
+}
+
+function handleToggleKeydown(e) {
+    if (e.key === 'Escape') {
+        pendingToggle.value = null
+    }
+}
+
+function requestToggle(product, field) {
+    const next = field === 'status'
+        ? (product.status === 'active' ? 'inactive' : 'active')
+        : !product.featured
+
+    pendingToggle.value = { product, field, next }
+}
+
+function confirmToggle() {
+    if (!pendingToggle.value) {
+return
+}
+
+    const { product, field, next } = pendingToggle.value
+    const routeName = field === 'status' ? 'admin.products.update-status' : 'admin.products.update-featured'
+    const payload = field === 'status' ? { status: next } : { featured: next }
+
+    pendingToggle.value = null
+    togglingKey.value = `${product.id}-${field}`
+
+    router.patch(route(routeName, product.id), payload, {
+        preserveScroll: true,
+        onFinish: () => {
+            togglingKey.value = ''
+        },
+    })
+}
+
+function isToggling(product, field) {
+    return togglingKey.value === `${product.id}-${field}`
+}
+
+function formatPrice(price) {
+    return '৳' + price.toLocaleString('en-IN')
 }
 </script>
 
@@ -95,7 +193,18 @@ function statusBadge(status) {
 
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex flex-wrap gap-3">
-                    <input v-model="search" type="text" placeholder="Search products..." class="flex-1 min-w-[200px] rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                    <input v-model="search" type="text" placeholder="Search by title or sku..." class="flex-1 min-w-[200px] rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                    <select v-model="statusFilter" class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="draft">Draft</option>
+                    </select>
+                    <select v-model="featuredFilter" class="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">All Featured</option>
+                        <option value="true">Featured</option>
+                        <option value="false">Not Featured</option>
+                    </select>
                     <div ref="categoryDropdownRef" class="relative">
                         <button @click.stop="showCategoryDropdown = !showCategoryDropdown" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm shadow-sm px-3 py-2 min-w-[180px] justify-between hover:border-gray-400 dark:hover:border-gray-600 transition">
                             <span class="truncate">{{ selectedCategoryName }}</span>
@@ -103,10 +212,8 @@ function statusBadge(status) {
                         </button>
                         <div v-show="showCategoryDropdown" class="absolute z-50 mt-1 w-full min-w-[220px] rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg max-h-60 overflow-y-auto admin-scrollbar">
                             <button @click="selectCategory('')" class="w-full text-left px-3 py-2 text-sm transition" :class="!categoryId ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'">All Categories</button>
-                            <template v-for="cat in categories" :key="cat.id">
-                                <button @click="selectCategory(cat.id)" class="w-full text-left px-3 py-2 text-sm transition" :class="categoryId === cat.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'">{{ cat.name }}</button>
-                                <button v-for="child in cat.children" :key="child.id" @click="selectCategory(child.id)" class="w-full text-left px-3 py-2 text-sm pl-6 transition" :class="categoryId === child.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'">{{ child.name }}</button>
-                            </template>
+                            <button @click="selectCategory('none')" class="w-full text-left px-3 py-2 text-sm transition" :class="categoryId === 'none' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'">No Category</button>
+                            <button v-for="option in categoryOptions" :key="option.id" @click="selectCategory(option.id)" class="w-full text-left px-3 py-2 text-sm transition" :style="{ paddingLeft: (12 + option.depth * 16) + 'px' }" :class="categoryId === option.id ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'">{{ option.name }}</button>
                         </div>
                     </div>
                 </div>
@@ -154,11 +261,37 @@ function statusBadge(status) {
                                     <span class="text-sm" :class="product.total_stock <= 5 ? 'text-red-600 font-medium' : 'text-gray-600 dark:text-gray-400'">{{ product.total_stock }}</span>
                                 </td>
                                 <td class="px-4 py-3 text-center">
-                                    <span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize" :class="statusBadge(product.status)">{{ product.status }}</span>
+                                    <div class="relative inline-flex items-center justify-center">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <button type="button" role="switch" :aria-checked="product.status === 'active'" :disabled="isToggling(product, 'status')" @click="requestToggle(product, 'status')" class="relative inline-flex h-4 w-7 items-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50" :class="product.status === 'active' ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'">
+                                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition" :class="product.status === 'active' ? 'translate-x-4' : 'translate-x-0'" />
+                                            </button>
+                                            <span class="text-xs capitalize text-gray-500 dark:text-gray-400">{{ product.status }}</span>
+                                        </div>
+                                        <div v-if="isPending(product, 'status')" ref="toggleConfirmRef" class="absolute z-50 left-1/2 top-full mt-2 w-64 -translate-x-1/2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-3 text-left">
+                                            <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-white dark:bg-gray-900 border-l border-t border-gray-200 dark:border-gray-700"></div>
+                                            <p class="text-sm text-gray-800 dark:text-gray-200">{{ togglePopoverMessage }}</p>
+                                            <div class="flex items-center gap-2 mt-3">
+                                                <button @click="confirmToggle" class="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition" :disabled="isToggling(product, 'status')">{{ isToggling(product, 'status') ? 'Saving...' : 'Confirm' }}</button>
+                                                <button @click="pendingToggle = null" class="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition">Cancel</button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3 text-center">
-                                    <span v-if="product.featured" class="text-amber-500 text-lg">&#9733;</span>
-                                    <span v-else class="text-gray-300 dark:text-gray-600 text-lg">&#9734;</span>
+                                    <div class="relative inline-flex items-center justify-center">
+                                        <button type="button" role="switch" :aria-checked="product.featured" :disabled="isToggling(product, 'featured')" @click="requestToggle(product, 'featured')" class="relative inline-flex h-4 w-7 items-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50" :class="product.featured ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600'">
+                                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition" :class="product.featured ? 'translate-x-4' : 'translate-x-0'" />
+                                        </button>
+                                        <div v-if="isPending(product, 'featured')" ref="toggleConfirmRef" class="absolute z-50 left-1/2 top-full mt-2 w-64 -translate-x-1/2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl p-3 text-left">
+                                            <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-white dark:bg-gray-900 border-l border-t border-gray-200 dark:border-gray-700"></div>
+                                            <p class="text-sm text-gray-800 dark:text-gray-200">{{ togglePopoverMessage }}</p>
+                                            <div class="flex items-center gap-2 mt-3">
+                                                <button @click="confirmToggle" class="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 transition" :disabled="isToggling(product, 'featured')">{{ isToggling(product, 'featured') ? 'Saving...' : 'Confirm' }}</button>
+                                                <button @click="pendingToggle = null" class="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition">Cancel</button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-1.5">

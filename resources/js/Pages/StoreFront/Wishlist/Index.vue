@@ -1,7 +1,7 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import HomeProductCard from '@/Components/StoreFront/WishlistProductCard.vue';
+import HomeProductCard from '@/Components/StoreFront/HomeProductCard.vue';
 import { useWishlist } from '@/composables/useWishlist';
 import FrontEndMaster from '@/Layouts/Frontend/FrontEndMaster.vue';
 
@@ -21,8 +21,12 @@ const saved = computed(() =>
 const exporting = ref(false);
 
 async function exportExcel() {
-    if (!saved.value.length || exporting.value) return;
+    if (!saved.value.length || exporting.value) {
+return;
+}
+
     exporting.value = true;
+
     try {
         const response = await window.axios.post(
             route('wishlist.export'),
@@ -43,8 +47,12 @@ async function exportExcel() {
 }
 
 const showClearModal = ref(false);
-function confirmClearAll() { showClearModal.value = true; }
-function executeClear() { showClearModal.value = false; wishlist.clear(); }
+function confirmClearAll() {
+ showClearModal.value = true; 
+}
+function executeClear() {
+ showClearModal.value = false; wishlist.clear(); 
+}
 </script>
 
 <template>
@@ -79,7 +87,7 @@ function executeClear() { showClearModal.value = false; wishlist.clear(); }
             </div>
         </div>
 
-        <div v-if="saved.length" class="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-3">
+        <div v-if="saved.length" class="grid grid-cols-2 gap-4 md:grid-cols-6">
             <HomeProductCard
                 v-for="product in saved"
                 :key="product.id"

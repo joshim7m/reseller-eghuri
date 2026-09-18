@@ -5,7 +5,7 @@ const { faqs } = defineProps({
     faqs: { type: Array, default: () => [] },
 });
 
-const openIndex = ref(null);
+const openIndex = ref(0);
 
 function toggle(index) {
     openIndex.value = openIndex.value === index ? null : index;
@@ -13,101 +13,63 @@ function toggle(index) {
 </script>
 
 <template>
-    <section class="mb-16">
-        <div class="mb-6 flex items-end justify-center gap-4">
-            <div class="flex items-center gap-3">
-                <div
-                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-lg shadow-sky-200/60 dark:shadow-sky-900/30 md:h-11 md:w-11"
-                >
-                    <svg
-                        class="h-5 w-5 text-white md:h-6 md:w-6"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                        />
-                    </svg>
-                </div>
-                <div>
-                    <h2
-                        class="font-bengali text-xl font-bold text-gray-800 dark:text-white md:text-2xl"
-                    >
-                        সচরাচর জিজ্ঞাসা
-                    </h2>
-                    <p
-                        class="mt-0.5 font-bengali text-xs text-gray-400 dark:text-gray-500 md:text-sm"
-                    >
-                        আপনার প্রশ্নের উত্তর খুঁজুন
-                    </p>
-                </div>
+    <section v-if="faqs.length" role="region" aria-label="FAQs">
+        <div class="mb-2 text-center">
+            <h2 class="text-xl font-bold text-charcoal dark:text-[#f9eeed] md:text-2xl">FAQ</h2>
+            <div class="mx-auto mt-3 flex h-1 w-12 items-center justify-center gap-1">
+                <span class="h-1 w-12 rounded-full bg-primary"></span>
             </div>
+            <p class="mt-4 text-sm text-on-surface-variant dark:text-[#cbb8b6]">
+                Answers to your common questions
+            </p>
         </div>
 
-        <div class="mx-auto max-w-2xl space-y-2.5 px-0 md:space-y-3">
+        <div class="mx-auto max-w-3xl space-y-3 px-2 py-10 sm:px-0">
             <div
                 v-for="(faq, i) in faqs"
                 :key="i"
-                class="group relative rounded-[2rem] border border-gray-200/80 bg-white p-1.5 shadow-sm transition-all duration-300 hover:border-sky-200 hover:shadow-xl hover:shadow-sky-100/70 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:shadow-gray-900/50 md:p-2"
-                :class="{
-                    'border-sky-200 shadow-lg dark:border-gray-600 dark:shadow-gray-900/40':
-                        openIndex === i,
-                }"
+                class="overflow-hidden rounded-2xl border transition-all duration-200"
+                :class="
+                    openIndex === i
+                        ? 'border-primary/60 bg-[#fff7f6] dark:border-[#f6b7b2]/50 dark:bg-[#2a211f]'
+                        : 'border-surface-container-high bg-white hover:border-primary/40 dark:border-[#3a302e] dark:bg-[#241d1c] dark:hover:border-[#f6b7b2]/30'
+                "
             >
-                <span
-                    class="absolute inset-x-10 top-0 h-1 rounded-b-full bg-gradient-to-r from-sky-500 to-indigo-600 opacity-70"
-                ></span>
-
                 <button
                     @click="toggle(i)"
-                    class="flex w-full items-center justify-between gap-3 rounded-[1.6rem] px-3.5 py-3 text-left transition md:px-4"
-                    :class="
-                        openIndex === i
-                            ? 'bg-sky-50 dark:bg-sky-900/20'
-                            : 'hover:bg-gray-50 dark:hover:bg-gray-700/40'
-                    "
+                    class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                    aria-expanded="openIndex === i"
                 >
+                    <span class="flex min-w-0 items-center gap-3">
+                        <span
+                            class="hidden h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold sm:flex"
+                            :class="
+                                openIndex === i
+                                    ? 'bg-primary text-white'
+                                    : 'bg-surface-container-high text-on-surface-variant dark:bg-[#3a302e] dark:text-[#cbb8b6]'
+                            "
+                        >{{ i + 1 }}</span>
+                        <span
+                            class="font-bengali text-sm font-semibold leading-relaxed text-charcoal dark:text-[#f9eeed] md:text-base"
+                        >{{ faq.question }}</span>
+                    </span>
                     <span
-                        class="pr-2 font-bengali text-sm font-medium leading-relaxed text-gray-800 dark:text-gray-100 md:text-base"
-                        >{{ faq.question }}</span
-                    >
-                    <span
-                        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-300 md:h-8 md:w-8"
+                        class="material-symbols-outlined shrink-0 text-[22px] transition-transform duration-300"
                         :class="
                             openIndex === i
-                                ? 'rotate-180 bg-gradient-to-br from-sky-500 to-indigo-600 text-white'
-                                : 'bg-gray-100 text-gray-400 group-hover:bg-sky-100 group-hover:text-sky-600 dark:bg-gray-700/60 dark:text-gray-500 dark:group-hover:bg-sky-900/30 dark:group-hover:text-sky-400'
+                                ? 'rotate-180 text-primary dark:text-[#f6b7b2]'
+                                : 'text-outline-variant dark:text-[#3a302e]'
                         "
-                    >
-                        <svg
-                            class="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M19 9l-7 7-7-7"
-                            />
-                        </svg>
-                    </span>
+                        aria-hidden="true"
+                    >expand_more</span>
                 </button>
+
                 <div
                     class="overflow-hidden transition-all duration-300 ease-in-out"
-                    :class="
-                        openIndex === i
-                            ? 'max-h-96 opacity-100'
-                            : 'max-h-0 opacity-0'
-                    "
+                    :class="openIndex === i ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'"
                 >
                     <p
-                        class="px-4 pb-3 font-bengali text-xs leading-relaxed text-gray-600 dark:text-gray-400 md:px-5 md:pb-4 md:text-sm"
+                        class="border-t border-outline-variant/60 px-5 pb-4 pt-3 font-bengali text-xs leading-relaxed text-on-surface-variant dark:border-[#3a302e] dark:text-[#cbb8b6] md:text-sm"
                     >
                         {{ faq.answer }}
                     </p>

@@ -1,7 +1,7 @@
 <script setup>
-import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import { ref, onMounted, onUnmounted } from 'vue'
+import AdminMaster from '@/Layouts/Admin/AdminMaster.vue'
 
 const props = defineProps({
     orders: { type: Array, required: true },
@@ -46,14 +46,17 @@ function formatDate(date) {
 
 function statusBadge(status) {
     const map = { pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', processing: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', returned: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' }
+
     return map[status] || 'bg-gray-100 text-gray-800'
 }
 
 function copyOrder(order) {
     const deliveryCharge = Number(order.delivery_charge || 0)
     const lines = order.items.map(item => {
-        const productName = [item.product_name, item.variant?.size, item.variant?.color, item.variant?.sku].filter(Boolean).join(' ')
+        const variantOpts = item.options?.length ? item.options.map(o => o.value).join(' / ') : ''
+        const productName = [item.product_name, variantOpts, item.variant?.sku].filter(Boolean).join(' ')
         const itemAmount = Number(item.sale_price ?? item.unit_price) * item.quantity
+
         return [
             productName,
             order.customer_name || '',
@@ -68,7 +71,9 @@ function copyOrder(order) {
     })
     navigator.clipboard.writeText(lines.join('\n'))
     copiedOrderId.value = order.id
-    setTimeout(() => { copiedOrderId.value = null }, 2000)
+    setTimeout(() => {
+ copiedOrderId.value = null 
+}, 2000)
 }
 </script>
 
@@ -160,11 +165,9 @@ function copyOrder(order) {
                                     <span class="font-mono text-green-600 dark:text-green-400">Sale Price: {{
                                         item.sale_price }}</span>
                                 </template>
-                                <template v-if="item.size || item.color">
+                                <template v-if="item.options?.length">
                                     <span class="mx-1.5 text-gray-300 dark:text-gray-600">|</span>
-                                    <span v-if="item.size" class="font-mono">{{ item.size }}</span><span
-                                        v-if="item.size && item.color" class="mx-0.5">/</span><span v-if="item.color"
-                                        class="font-mono">{{ item.color }}</span>
+                                    <span class="font-mono">{{ item.options.map(o => o.value).join(' / ') }}</span>
                                 </template>
                             </p>
                         </div>

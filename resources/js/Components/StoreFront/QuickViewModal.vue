@@ -3,6 +3,7 @@ import { Link, usePage } from '@inertiajs/vue3'
 import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useCart } from '@/composables/useCart'
 import { useQuickView } from '@/composables/useQuickView'
+import { dimensionNames, dimensionValues, findVariantByOptions, variantOptions, isColorDimension } from '@/composables/useVariantOptions'
 
 const { open, product, close } = useQuickView()
 const cart = useCart()
@@ -57,34 +58,28 @@ function onTouchEnd(e) {
 }
 
 // ---------- variants ----------
-const variantSizes = computed(() =>
-    [...new Set((product.value?.variants || []).map(v => v.size).filter(Boolean))]
+const variants = computed(() => product.value?.variants || [])
+
+const dimensions = computed(() =>
+    dimensionNames(variants.value).map((name) => ({
+        name,
+        values: dimensionValues(variants.value, name),
+    })),
 )
 
-const variantColors = computed(() =>
-    [...new Set((product.value?.variants || []).map(v => v.color).filter(Boolean))]
+const selectedOptions = ref({})
+
+const selectedVariant = computed(
+    () =>
+        findVariantByOptions(variants.value, selectedOptions.value)
+        || variants.value[0] || null,
 )
 
-const selectedSize = ref(null)
-const selectedColor = ref(null)
+const variantName = computed(() => {
+    const opts = variantOptions(selectedVariant.value || {})
 
-const selectedVariant = computed(() => {
-    const variants = product.value?.variants || []
-
-    if (!variants.length) {
-        return null
-    }
-
-    return variants.find(v =>
-            (v.size || null) === selectedSize.value && (v.color || null) === selectedColor.value
-        )
-        || variants.find(v => (v.size || null) === selectedSize.value)
-        || variants[0]
+    return opts.map(o => o.value).join(' / ') || null
 })
-
-const variantName = computed(() =>
-    [selectedSize.value, selectedColor.value].filter(Boolean).join(' / ') || null
-)
 
 const variantImageIndex = computed(() => {
     const v = selectedVariant.value
@@ -139,6 +134,10 @@ function changeQty(delta) {
     qty.value = Math.min(max, Math.max(1, qty.value + delta))
 }
 
+function selectOption(name, value) {
+    selectedOptions.value = { ...selectedOptions.value, [name]: value }
+}
+
 // ---------- add to cart ----------
 const added = ref(false)
 let addedTimer = null
@@ -156,6 +155,7 @@ function addToCart() {
         price: salePrice.value,
         qty: qty.value,
         variant_id: selectedVariant.value?.id ?? null,
+        options: variantOptions(selectedVariant.value || {}),
         variant_name: variantName.value,
     })
     added.value = true
@@ -217,8 +217,9 @@ watch(open, (val) => {
     if (val) {
         current.value = 0
         qty.value = 1
-        selectedSize.value = variantSizes.value[0] ?? null
-        selectedColor.value = variantColors.value[0] ?? null
+        selectedOptions.value = Object.fromEntries(
+            dimensions.value.map(d => [d.name, d.values[0] ?? null]),
+        )
         document.body.style.overflow = 'hidden'
     } else {
         document.body.style.overflow = ''
@@ -345,31 +346,28 @@ onBeforeUnmount(() => clearTimeout(addedTimer))
                                         <Link :href="route('login')" @click="close" class="block mt-1 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">প্রাইস দেখতে লগইন করুন</Link>
                                     </div>
 
-                                    <div v-if="variantSizes.length || variantColors.length" class="mt-4 space-y-3">
-                                        <div v-if="variantSizes.length">
-                                            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Size</span>
-                                            <div class="flex flex-wrap gap-2 mt-1.5">
+                                    <div v-if="dimensions.length" class="mt-4 space-y-3">
+                                        <div v-for="dim in dimensions" :key="dim.name">
+                                            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400 capitalize">{{ dim.name }}</span>
+                                            <div v-if="isColorDimension(dim.name)" class="flex flex-wrap items-center gap-2 mt-1.5">
                                                 <button
-                                                    v-for="size in variantSizes" :key="size"
+                                                    v-for="color in dim.values" :key="color"
                                                     type="button"
-                                                    @click="selectedSize = size"
-                                                    :class="selectedSize === size ? 'bg-[#0B132A] dark:bg-gray-900 text-white border-[#D9531E] dark:border-orange-500' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-[#D9531E] dark:hover:border-orange-500'"
-                                                    class="px-3 py-1.5 rounded-lg border text-xs font-semibold transition"
-                                                >{{ size }}</button>
-                                            </div>
-                                        </div>
-                                        <div v-if="variantColors.length">
-                                            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">Color</span>
-                                            <div class="flex flex-wrap items-center gap-2 mt-1.5">
-                                                <button
-                                                    v-for="color in variantColors" :key="color"
-                                                    type="button"
-                                                    @click="selectedColor = color"
-                                                    :class="selectedColor === color ? 'ring-2 ring-[#D9531E] dark:ring-orange-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900' : 'hover:ring-2 hover:ring-gray-300 dark:hover:ring-gray-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'"
+                                                    @click="selectOption(dim.name, color)"
+                                                    :class="selectedOptions[dim.name] === color ? 'ring-2 ring-[#D9531E] dark:ring-orange-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900' : 'hover:ring-2 hover:ring-gray-300 dark:hover:ring-gray-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-900'"
                                                     class="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600 transition"
                                                     :style="{ backgroundColor: colorHex(color), backgroundImage: colorHex(color).startsWith('linear') ? colorHex(color) : 'none' }"
                                                     :title="color"
                                                 ></button>
+                                            </div>
+                                            <div v-else class="flex flex-wrap gap-2 mt-1.5">
+                                                <button
+                                                    v-for="value in dim.values" :key="value"
+                                                    type="button"
+                                                    @click="selectOption(dim.name, value)"
+                                                    :class="selectedOptions[dim.name] === value ? 'bg-[#0B132A] dark:bg-gray-900 text-white border-[#D9531E] dark:border-orange-500' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-[#D9531E] dark:hover:border-orange-500'"
+                                                    class="px-3 py-1.5 rounded-lg border text-xs font-semibold transition"
+                                                >{{ value }}</button>
                                             </div>
                                         </div>
                                     </div>
