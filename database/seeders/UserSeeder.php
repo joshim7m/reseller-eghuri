@@ -40,8 +40,8 @@ class UserSeeder extends Seeder
         ]);
 
         $sellers = [
-            ['name' => 'Rahim Mia',       'email' => 'rahim@example.com', 'user_type' => 'reseller',  'company' => 'Rahim Enterprise',  'mobile' => '01735365488', 'address' => '42 Gulshan Avenue, Dhaka 1212'],
-            ['name' => 'Karim Hossain',   'email' => 'karim@example.com',  'user_type' => 'reseller',  'company' => 'Karim Traders',      'mobile' => '01912345678', 'address' => '15 Banani Road, Dhaka 1213'],
+            ['name' => 'Hasan',       'email' => 'hasan@example.com', 'user_type' => 'reseller',  'company' => 'Rahim Enterprise',  'mobile' => '01735365488', 'address' => '42 Gulshan Avenue, Dhaka 1212'],
+            ['name' => 'Rasel Hasan',   'email' => 'rasel@example.com',  'user_type' => 'reseller',  'company' => 'Karim Traders',      'mobile' => '01912345678', 'address' => '15 Banani Road, Dhaka 1213'],
             ['name' => 'Fatima Begum',    'email' => 'fatima@example.com',  'user_type' => 'reseller',  'company' => 'Fatima Stores',     'mobile' => '01698765432', 'address' => '78 Mirpur Road, Dhaka 1216'],
         ];
 
